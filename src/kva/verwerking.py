@@ -293,3 +293,88 @@ def pics_regels(tabel: pd.DataFrame, re_skus: set[str] | None = None) -> PicsLij
             bulks[b] = bulks.get(b, Decimal(0)) - af
     regels = [f"{k},{formatteer(v)}" for k, v in porties.items()] + [f"{k},{formatteer(v)}" for k, v in bulks.items()]
     return PicsLijst(regels, porties, bulks, fouten, waarsch)
+
+
+# ---------------------------------------------------------------- overzicht per bulk
+
+GEEN_BULK = "(geen bulk)"
+OVERZICHT_KOLOMMEN = ["Bulk", "Regel", "SKU", "PLU", "Omschrijving", "Mutatie", "Eenheid", "Van bulk", "Bulk-eenheid", "Controle"]
+
+
+@dataclass
+class BulkOverzicht:
+    tabel: pd.DataFrame          # een blok per bulk: bulkregel (-), portieregels (+), totaalregel
+    porties_kg: Decimal
+    porties_st: Decimal
+    bulks_kg: Decimal
+    bulks_st: Decimal
+    zonder_bulk_kg: Decimal
+    zonder_bulk_st: Decimal
+    verschillen: int
+
+
+def bulk_eenheid(eenheid: str, plu: int, regels: Regels) -> str:
+    """Eenheid waarin de bulk wordt afgeboekt: kg, behalve stuksartikelen waarvan de bulk per stuk telt."""
+    if eenheid != "st":
+        return "kg"
+    w = regels.afslag_indeling.get("per_stuk", {}).get(str(plu))
+    return "kg" if w not in (None, "stuk") else "st"
+
+
+def overzicht_per_bulk(tabel: pd.DataFrame, regels: Regels, namen: dict[str, str] | None = None) -> BulkOverzicht:
+    """Per bulk: wat eraf gaat, op welke portie-artikelen het erbij komt, en of dat sluit.
+
+    Alleen regels met Meenemen = waar. 'Van bulk' is de verkochte portie omgerekend naar de eenheid van
+    de bulk (stuks x kg per stuk). De som daarvan moet gelijk zijn aan wat er van de bulk afgaat; wijkt
+    'Bulk afboeken' af (met de hand aangepast), dan staat er een verschil bij het totaal.
+    """
+    namen = namen or {}
+    t = tabel[tabel.Meenemen.fillna(False).astype(bool)].copy()
+    t["_bulk"] = t["Bulk SKU"].map(bulk_sku)
+    nul = Decimal(0)
+    som = {"pk": nul, "ps": nul, "bk": nul, "bs": nul, "zk": nul, "zs": nul}
+    rijen, verschillen = [], 0
+    volgorde = sorted(t._bulk.unique(), key=lambda s: (s == "", namen.get(s, s).lower()))
+    for b in volgorde:
+        g = t[t._bulk == b]
+        label = f"{b} | {namen[b]}" if b in namen else (b or GEEN_BULK)
+        porties, af, eenh_bulk = [], nul, set()
+        for r in g.to_dict("records"):
+            q = _dec(r["Hoeveelheid"]) or nul
+            be = bulk_eenheid(r["Eenheid"], int(r["PLU"]), regels)
+            # 'van bulk' = verkocht, omgerekend naar de bulk-eenheid; 'af' = wat er echt wordt afgeboekt (kan aangepast zijn)
+            factor = regels.afslag_indeling.get("per_stuk", {}).get(str(r["PLU"]))
+            van = q * Decimal(str(factor)) if (r["Eenheid"] == "st" and be == "kg") else q
+            eenh_bulk.add(be)
+            som["ps" if r["Eenheid"] == "st" else "pk"] += q
+            if not b:
+                som["zs" if r["Eenheid"] == "st" else "zk"] += q
+            af += (_dec(r["Bulk afboeken"]) or nul) if b else nul
+            porties.append({"Bulk": label, "Regel": "+ portie", "SKU": tekst(r["Portie ART NR"]).removesuffix(".0"),
+                            "PLU": int(r["PLU"]), "Omschrijving": r["Omschrijving"], "Mutatie": float(q),
+                            "Eenheid": r["Eenheid"], "Van bulk": float(van) if b else None,
+                            "Bulk-eenheid": be if b else "", "Controle": ""})
+        be = "/".join(sorted(eenh_bulk))
+        if b:
+            som["bs" if be == "st" else "bk"] += af
+            rijen.append({"Bulk": label, "Regel": "- bulk", "SKU": b, "PLU": None,
+                          "Omschrijving": namen.get(b, ""), "Mutatie": -float(af), "Eenheid": be,
+                          "Van bulk": None, "Bulk-eenheid": "", "Controle": ""})
+        rijen.extend(porties)
+        if b:
+            totaal_van = sum((_dec(p["Van bulk"]) or nul for p in porties), nul)
+            ok = abs(totaal_van - af) < Decimal("0.0005") and len(eenh_bulk) == 1
+            verschillen += not ok
+            controle = "OK" if ok else ("Gemengde eenheden" if len(eenh_bulk) > 1 else
+                                         f"Verschil {formatteer(totaal_van - af)}")
+            rijen.append({"Bulk": label, "Regel": "= totaal", "SKU": "", "PLU": None,
+                          "Omschrijving": f"{len(porties)} portie(s): erbij {formatteer(totaal_van)} {be}, "
+                                          f"eraf {formatteer(af)} {be}",
+                          "Mutatie": float(totaal_van - af), "Eenheid": be, "Van bulk": float(totaal_van),
+                          "Bulk-eenheid": be, "Controle": controle})
+        else:
+            rijen.append({"Bulk": label, "Regel": "= totaal", "SKU": "", "PLU": None,
+                          "Omschrijving": f"{len(porties)} portie(s) zonder bulk: alleen bijgeboekt", "Mutatie": None,
+                          "Eenheid": "", "Van bulk": None, "Bulk-eenheid": "", "Controle": "Let op: geen afboeking"})
+    return BulkOverzicht(pd.DataFrame(rijen, columns=OVERZICHT_KOLOMMEN), som["pk"], som["ps"], som["bk"], som["bs"],
+                         som["zk"], som["zs"], verschillen)

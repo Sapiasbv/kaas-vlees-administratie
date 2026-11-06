@@ -116,3 +116,32 @@ def test_genegeerde_plu(regels):
     t = deel_in(Z, mp((3027, "203027", "B1")), None, r2).tabel.set_index("PLU")
     assert t.at[3027, "Categorie"] == BUITEN and not t.at[3027, "Meenemen"]
     assert "One time" in t.at[3027, "Melding"]
+
+
+def test_overzicht_per_bulk(regels):
+    import dataclasses
+    from kva.verwerking import overzicht_per_bulk
+    r = dataclasses.replace(regels, afslag_indeling=dict(regels.afslag_indeling, per_stuk={"3050": 0.15, "3029": "stuk"}))
+    t = pd.DataFrame([
+        {"Meenemen": True, "PLU": 3731, "Omschrijving": "Speklapjes", "Eenheid": "kg", "Hoeveelheid": 5.0,
+         "Portie ART NR": "203731", "Bulk SKU": "B1 | Bulk Buik", "Bulk afboeken": 5.0},
+        {"Meenemen": True, "PLU": 3050, "Omschrijving": "Rolladeschijf", "Eenheid": "st", "Hoeveelheid": 10.0,
+         "Portie ART NR": "203050", "Bulk SKU": "B1 | Bulk Buik", "Bulk afboeken": 1.5},
+        {"Meenemen": True, "PLU": 3029, "Omschrijving": "Ossenworst", "Eenheid": "st", "Hoeveelheid": 16.0,
+         "Portie ART NR": "203029", "Bulk SKU": "B2", "Bulk afboeken": 16.0},
+        {"Meenemen": True, "PLU": 3090, "Omschrijving": "Ham", "Eenheid": "kg", "Hoeveelheid": 2.0,
+         "Portie ART NR": "203090", "Bulk SKU": "", "Bulk afboeken": None},
+        {"Meenemen": False, "PLU": 2502, "Omschrijving": "Appeltaart", "Eenheid": "st", "Hoeveelheid": 5.0,
+         "Portie ART NR": "", "Bulk SKU": "", "Bulk afboeken": None},
+    ])
+    o = overzicht_per_bulk(t, r, {"B1": "Bulk Buik", "B2": "Bulk Ossenworst"})
+    assert (float(o.porties_kg), float(o.porties_st), float(o.bulks_kg), float(o.bulks_st)) == (7.0, 26.0, 6.5, 16.0)
+    assert (float(o.zonder_bulk_kg), o.verschillen) == (2.0, 0)
+    tot = o.tabel[o.tabel.Regel == "= totaal"].set_index("SKU", drop=False)
+    assert list(o.tabel.Bulk.unique()) == ["B1 | Bulk Buik", "B2 | Bulk Ossenworst", "(geen bulk)"]
+    assert list(o.tabel[o.tabel.Regel == "- bulk"].Mutatie) == [-6.5, -16.0]
+    assert list(o.tabel[o.tabel.Regel == "= totaal"].Controle) == ["OK", "OK", "Let op: geen afboeking"]
+    t.loc[0, "Bulk afboeken"] = 4.0  # handmatig aangepast: sluit niet meer
+    o2 = overzicht_per_bulk(t, r)
+    assert o2.verschillen == 1
+    assert "Verschil 1" in o2.tabel[o2.tabel.Regel == "= totaal"].Controle.iloc[0]

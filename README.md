@@ -18,8 +18,12 @@ Dubbelklik `start_scherm.cmd`. De browser opent op http://localhost:8501 (alleen
 
 1. **Upload de Z-afslag** van afgelopen week (maandag t/m zondag), de export van de hele weegschaal. De app controleert de periode en of deze afslag al verwerkt is.
 2. **Check bijzonderheden**: elke regel wordt ingedeeld als Vlees, Kaas (elk met of zonder bulk), Buiten scope (fruit, bake-off) of Onbekend. Totaalcontrole in kg en stuks tegen de totaalregel. Aanpassen kan: meenemen, hoeveelheid, portie ART NR, bulk SKU en hoeveel kg er van de bulk afgaat (nodig bij stuksartikelen).
-3. **PICS-lijst maken**: controle tegen RE, daarna opslaan in `uitvoer/` (plus een Excel met de verwerkte regels) en downloaden.
+3. **PICS-lijst maken**: controle tegen RE, met een overzicht per bulk (wat eraf gaat, op welke porties het erbij komt, en of dat sluit). Daarna opslaan in `uitvoer/` (plus een Excel met de regels en het overzicht per bulk) en downloaden.
 4. **Importeren in RetailEdge** volgens de SOP (Append, nooit Overwrite).
+
+Pagina **Voorraad & tellijsten**: bulk- en stuksvoorraad volgens de RE-export (bekijken en als Excel downloaden), tellijsten uitdraaien (`uitvoer/tellijsten/`, vast formaat: tabblad Info, Tellijst bulk/stuks, verborgen tabblad Systeem met de voorraad bij uitdraaien) en een ingevulde tellijst weer inlezen voor de telverschillen.
+
+Pagina **Maandcontrole**: productie weegschaal tegen verkoop RetailEdge. Wacht nog op een voorbeeld van de RE-verkoopexport.
 
 De mapping voor vlees en kaas komt rechtstreeks uit de RE-export en weegschaal-lijst (zelfde koppelregels als `mapping`: part nr, en anders naam 'Stuk/… X' = 'Bulk X'). Kaas-PLU's die daar ontbreken maar in het Kaas-tabblad van het PICS-tool staan, worden aangevuld.
 

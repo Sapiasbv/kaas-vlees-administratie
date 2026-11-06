@@ -5,6 +5,7 @@ Starten: dubbelklik start_scherm.cmd, of: python -m streamlit run src/kva/scherm
 
 from __future__ import annotations
 
+import io
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -21,8 +22,9 @@ from kva.opslag import lees_log, schrijf_log, sha256, vrije_naam  # noqa: E402
 from kva.pics import formatteer  # noqa: E402
 from kva.verwerking import (  # noqa: E402
     BUITEN, KAAS, KAAS_GEEN_BULK, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in,
-    mapping_uit_koppeling, pics_regels, totaalcontrole,
+    mapping_uit_koppeling, overzicht_per_bulk, pics_regels, totaalcontrole,
 )
+from kva.voorraad import BULK, STUK, lees_tellijst, maak_tellijst, telverschillen, voorraad_lijst  # noqa: E402
 
 st.set_page_config(page_title="Voorraadcorrectie kaas & vlees", page_icon="🥩", layout="wide")
 
@@ -189,10 +191,9 @@ def uitleg():
 
 # ---------------------------------------------------------------- pagina
 
-def main():
-    inst = laad_instellingen()
-    uit = uitvoermap(inst)
-    (regels, re_df, (k, k_kaas), kaas, bulk_namen), paden = bronnen_zijbalk(inst)
+def pagina_week():
+    uit = CTX["uit"]
+    (regels, re_df, (k, k_kaas), kaas, bulk_namen), paden = CTX["bron"], CTX["paden"]
     ss = st.session_state
 
     koptekst()
@@ -316,13 +317,24 @@ def main():
             st.warning(w)
         if lijst.fouten:
             st.stop()
+        ov = overzicht_per_bulk(tabel, regels, bulk_namen)
         c1, c2, c3 = st.columns(3)
-        c1.metric("Portie-artikelen (+)", len(lijst.porties))
-        c2.metric("Bulk-artikelen (−)", len(lijst.bulks))
-        c3.metric("Afgeboekt van bulk", formatteer(-sum(lijst.bulks.values(), start=0)))
-        with st.expander(f"Bekijk de {len(lijst.regels)} regels"):
-            st.dataframe(pd.DataFrame([r.split(",") for r in lijst.regels], columns=["SKU", "Hoeveelheid"]),
-                         hide_index=True)
+        kaart(c1, "Erbij op porties", f"{formatteer(ov.porties_kg)} kg",
+              f"en {formatteer(ov.porties_st)} stuks · {len(lijst.porties)} artikelen")
+        kaart(c2, "Eraf van bulks", f"{formatteer(ov.bulks_kg)} kg",
+              f"en {formatteer(ov.bulks_st)} stuks · {len(lijst.bulks)} bulks")
+        zonder = ov.zonder_bulk_kg + ov.zonder_bulk_st
+        goed = ov.verschillen == 0 and zonder == 0
+        kaart(c3, "Controle", "Sluit ✓" if goed else "Let op",
+              (f"{ov.verschillen} bulk(s) met verschil. " if ov.verschillen else "Per bulk: erbij = eraf. ")
+              + (f"Zonder bulk: {formatteer(ov.zonder_bulk_kg)} kg en {formatteer(ov.zonder_bulk_st)} st alleen bijgeboekt."
+                 if zonder else ""), goed)
+        st.caption("Porties in stuks van een bulk in kg (zoals Rolladeschijf) tellen bij 'eraf' mee in kg: "
+                   "aantal × gewicht per stuk.")
+        with st.expander(f"Bekijk per bulk ({len(lijst.bulks)} bulks, {len(lijst.regels)} PICS-regels)"):
+            toon_overzicht(ov.tabel)
+            st.download_button("Download dit overzicht (Excel)", excel_bytes({"Per bulk": ov.tabel}),
+                               file_name=f"{Path(ss.afslag['naam']).stem}_per_bulk.xlsx")
 
         if "opgeslagen" not in ss:
             if st.button("Opslaan"):
@@ -330,7 +342,9 @@ def main():
                 csv_pad = vrije_naam(uit / f"{stam}_PICS_import.csv")
                 with open(csv_pad, "w", encoding="ascii", newline="\r\n") as f:
                     f.write("\n".join(lijst.regels) + "\n")
-                tabel.to_excel(vrije_naam(uit / f"{stam}_verwerking.xlsx"), index=False)
+                with pd.ExcelWriter(vrije_naam(uit / f"{stam}_verwerking.xlsx")) as xw:
+                    tabel.to_excel(xw, sheet_name="Regels", index=False)
+                    ov.tabel.to_excel(xw, sheet_name="Per bulk", index=False)
                 schrijf_log(uit, ss.afslag["naam"], ss.afslag["hash"], csv_pad)
                 ss.opgeslagen = csv_pad
                 st.rerun()
@@ -351,6 +365,158 @@ def main():
         if regels.afslag_indeling.get("kaas_meenemen"):
             st.warning("Deze lijst bevat ook kaas. Verwerk dezelfde afslag dus **niet** ook nog in het PICS-tool "
                        "(Genereer_PICS_import.xlsm), anders wordt de kaas dubbel geboekt.")
+
+
+# ---------------------------------------------------------------- hulpjes
+
+def excel_bytes(tabbladen: dict[str, pd.DataFrame]) -> bytes:
+    b = io.BytesIO()
+    with pd.ExcelWriter(b) as xw:
+        for naam, df in tabbladen.items():
+            df.to_excel(xw, sheet_name=naam[:31], index=False)
+    return b.getvalue()
+
+
+def nl(x: float, decimalen: int = 3) -> str:
+    """1234.5 -> '1.234,500'"""
+    return f"{x:,.{decimalen}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def toon_overzicht(t: pd.DataFrame):
+    def kleur(rij):
+        if rij.Regel == "- bulk":
+            return ["background-color: #E1EEF9; font-weight: 600"] * len(rij)
+        if rij.Regel == "= totaal":
+            ok = rij.Controle == "OK"
+            return [f"background-color: {'#EAF7EE' if ok else '#FDEBDD'}; font-style: italic"] * len(rij)
+        return [""] * len(rij)
+    st.dataframe(t.style.apply(kleur, axis=1).format({"Mutatie": "{:+.3f}", "Van bulk": "{:.3f}", "PLU": "{:.0f}"},
+                                                     na_rep=""),
+                 hide_index=True, use_container_width=True, height=min(36 * (len(t) + 1), 600),
+                 column_config={"Bulk": None, "Bulk-eenheid": None})
+
+
+# ---------------------------------------------------------------- pagina: voorraad en tellijsten
+
+def pagina_voorraad():
+    regels, re_df, koppelingen, _, _ = CTX["bron"]
+    uit, paden = CTX["uit"], CTX["paden"]
+    st.markdown("## Voorraad & tellijsten")
+    stand = datetime.fromtimestamp(paden["re_export"].stat().st_mtime)
+    st.caption(f"Voorraad volgens de RE-export `{paden['re_export'].name}` van {stand:%d-%m-%Y %H:%M}. "
+               "Wil je de stand van nu? Zet eerst een verse export in de map data › re_export.")
+    lijst = voorraad_lijst(re_df, list(koppelingen), regels)
+
+    tab_b, tab_s, tab_t, tab_i = st.tabs(["Bulkvoorraad", "Stuksvoorraad", "Tellijst uitdraaien", "Telling inlezen"])
+    for tab, type_ in ((tab_b, BULK), (tab_s, STUK)):
+        with tab:
+            deel = lijst[lijst.Type == type_]
+            c1, c2 = st.columns([2, 1], vertical_alignment="bottom")
+            soorten = c1.multiselect("Soort", ["Vlees", "Kaas"], ["Vlees", "Kaas"], key=f"soort_{type_}")
+            alleen_neg = c2.checkbox("Alleen negatieve voorraad", key=f"neg_{type_}")
+            deel = deel[deel.Soort.isin(soorten)]
+            if alleen_neg:
+                deel = deel[deel.Voorraad < 0]
+            c1, c2, c3 = st.columns(3)
+            neg = int((deel.Voorraad < 0).sum())
+            kaart(c1, "Artikelen", f"{len(deel)}", f"{neg} met negatieve voorraad", neg == 0)
+            kaart(c2, "Voorraad", f"{nl(deel.loc[deel.Eenheid == 'kg', 'Voorraad'].sum())} kg",
+                  f"en {nl(deel.loc[deel.Eenheid == 'st', 'Voorraad'].sum(), 0)} stuks")
+            kaart(c3, "Waarde", f"$ {nl(deel.Waarde.sum(), 2)}", "voorraad × laatste kostprijs")
+            st.write("")
+            st.dataframe(deel.drop(columns=["Type"] + (["PLU"] if type_ == BULK else [])), hide_index=True, use_container_width=True, height=480,
+                         column_config={"PLU": st.column_config.NumberColumn(format="%d"),
+                                        "Voorraad": st.column_config.NumberColumn(format="%.3f"),
+                                        "Kostprijs": st.column_config.NumberColumn(format="%.2f"),
+                                        "Waarde": st.column_config.NumberColumn(format="%.2f"),
+                                        "Gekoppeld": st.column_config.TextColumn("Bulk" if type_ == STUK else "PLU's")})
+            st.download_button(f"Download {'bulk' if type_ == BULK else 'stuks'}voorraad (Excel)",
+                               excel_bytes({f"{type_}voorraad": deel}),
+                               file_name=f"{'Bulk' if type_ == BULK else 'Stuks'}voorraad_{stand:%Y_%m_%d}.xlsx",
+                               key=f"dl_{type_}")
+
+    with tab_t:
+        st.markdown("Maak een tellijst om te printen. Je collega's vullen per artikel **Geteld** in. "
+                    "Lever de ingevulde Excel daarna weer aan bij *Telling inlezen*, of aan Claude.")
+        c1, c2 = st.columns(2)
+        types = c1.multiselect("Welke lijsten", [BULK, STUK], [BULK, STUK],
+                               format_func=lambda t: "Bulk" if t == BULK else "Stuks (porties)")
+        soorten = c2.multiselect("Soort", ["Vlees", "Kaas"], ["Vlees", "Kaas"], key="soort_tel")
+        toon = st.checkbox("Systeemvoorraad op de lijst zetten", value=False,
+                           help="Standaard niet: blind tellen geeft een eerlijkere telling.")
+        keuze = lijst[lijst.Type.isin(types) & lijst.Soort.isin(soorten)]
+        st.caption(f"{len(keuze)} artikelen: {(keuze.Type == BULK).sum()} bulk, {(keuze.Type == STUK).sum()} stuks. "
+                   "Elk soort lijst komt op een eigen tabblad, klaar om te printen.")
+        if st.button("Maak tellijst", type="primary", disabled=keuze.empty):
+            naam = "_".join(s.lower() for s in soorten)
+            pad = vrije_naam(uit / "tellijsten" / f"Tellijst_{naam}_{datetime.now():%Y_%m_%d}.xlsx")
+            maak_tellijst(keuze, pad, paden["re_export"].name, toon)
+            st.session_state.tellijst = pad
+        pad = st.session_state.get("tellijst")
+        if pad and Path(pad).exists():
+            st.success(f"Opgeslagen: {pad}")
+            st.download_button("Download tellijst", Path(pad).read_bytes(), file_name=Path(pad).name)
+
+    with tab_i:
+        st.markdown("Kies een ingevulde tellijst. De app vergelijkt **Geteld** met de RE-voorraad op het moment "
+                    "van uitdraaien (en toont ook de stand in de huidige RE-export).")
+        st.caption("Wat er tussen uitdraaien en tellen is verkocht of geleverd, zit in het verschil. "
+                   "Tel daarom kort na het uitdraaien, liefst buiten openingstijd.")
+        f = st.file_uploader("Ingevulde tellijst (.xlsx)", type=["xlsx"], key="telling")
+        if f is None:
+            return
+        try:
+            t = lees_tellijst(io.BytesIO(f.getvalue()))
+        except BronFout as e:
+            st.error(str(e))
+            return
+        v = telverschillen(t, re_df)
+        if v.empty:
+            st.warning("Er is niets ingevuld bij Geteld.")
+            return
+        afwijk = v[v.Verschil.fillna(0).abs() > 0.0005]
+        totaal = float(v["Waarde verschil"].fillna(0).sum())
+        c1, c2, c3 = st.columns(3)
+        kaart(c1, "Geteld", f"{len(v)}", f"{t.niet_geteld} niet ingevuld · uitgedraaid {t.info.get('Gemaakt op', '?')}")
+        kaart(c2, "Met verschil", f"{len(afwijk)}", "geteld is niet gelijk aan systeem", afwijk.empty)
+        kaart(c3, "Waarde verschil", f"$ {nl(totaal, 2)}", "negatief = minder geteld dan in het systeem", totaal >= 0)
+        st.write("")
+        st.dataframe(v, hide_index=True, use_container_width=True, height=480)
+        st.download_button("Download verschillen (Excel)", excel_bytes({"Verschillen": v}),
+                           file_name=f"Telverschillen_{datetime.now():%Y_%m_%d_%H%M}.xlsx")
+
+
+# ---------------------------------------------------------------- pagina: maandcontrole
+
+def pagina_maand():
+    st.markdown("## Maandcontrole: productie tegen verkoop")
+    st.info("""
+**Wat deze controle doet:** per artikel de productie van de weegschaal (alle Z-afslagen van de maand) naast de
+verkoop in RetailEdge leggen. Is er veel meer geproduceerd dan verkocht, dan verdwijnt er iets
+(derving, diefstal, verkeerd gescand of een verkeerde PLU).
+
+**Wat er nog nodig is:** een verkoopexport uit RetailEdge per artikel over een maand (SKU, omschrijving,
+aantal of kg verkocht). Stuur een voorbeeld aan Claude, dan wordt deze pagina afgemaakt.
+""")
+    afslagen = sorted((CTX["uit"] / "afslagen").glob("Artikelen_van_*"))
+    st.caption(f"Z-afslagen in het archief: {len(afslagen)}. Elke verwerkte afslag wordt bewaard in uitvoer › afslagen.")
+
+
+# ---------------------------------------------------------------- start
+
+CTX: dict = {}
+
+
+def main():
+    inst = laad_instellingen()
+    CTX["inst"], CTX["uit"] = inst, uitvoermap(inst)
+    pg = st.navigation([
+        st.Page(pagina_week, title="Weekverwerking (PICS)", icon="📦", default=True),
+        st.Page(pagina_voorraad, title="Voorraad & tellijsten", icon="📋", url_path="voorraad"),
+        st.Page(pagina_maand, title="Maandcontrole", icon="📊", url_path="maand"),
+    ])
+    CTX["bron"], CTX["paden"] = bronnen_zijbalk(inst)
+    pg.run()
 
 
 main()
