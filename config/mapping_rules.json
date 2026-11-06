@@ -33,14 +33,13 @@
     "buiten_scope_leveranciers": ["DIFS"],
     "totaal_tolerantie": 0.01,
     "_uitleg_per_stuk": "PLU's die per stuk verkocht worden terwijl de bulk in kg staat: kg per stuk. Bulk afboeken = aantal x kg per stuk. Bulk per stuk geteld: zet hier 'stuk'.",
-    "per_stuk": {"3029": "stuk"}
+    "per_stuk": {"3029": "stuk", "3050": 0.150}
   },
+  "_uitleg_klasse_afwijking": "PLU's waarvan de klasse bewust afwijkt van de bulk (geen melding). 3039: retail 0301 vleeswaren, bulk 270266 blijft 0203 omdat 3018 er ook op hangt (Sjors, 6-11-2026).",
+  "klasse_afwijking_toegestaan": [3039],
   "samengestelde_artikelen": [3101, 3612, 3615, 3691],
   "controleer_part_nr": [3020, 3025, 3050],
-  "open_redenen": {
-    "3025": "Prosciutto: bulk-item wordt aangemaakt (RE-import 6-11-2026)",
-    "3050": "Rolladeschijf: part nr 2098 komt met RE-import 6-11-2026"
-  },
+  "open_redenen": {},
   "_uitleg_negeren": "PLU's die bewust buiten de koppeling en de PICS-correctie vallen (beslissing Sjors 6-11-2026).",
   "negeren_plus": {
     "3027": "Pastrami: vendor One time",

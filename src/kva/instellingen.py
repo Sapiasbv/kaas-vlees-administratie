@@ -32,6 +32,7 @@ class Regels:
     re_encoding: str
     hoofdlocatie: str
     pics_menu_tabblad: str
+    klasse_afwijking_ok: frozenset[int] = frozenset()
 
     @property
     def leveranciers_re_naar_weegschaal(self) -> dict[str, str]:
@@ -60,6 +61,7 @@ def laad_regels(pad: Path | None = None) -> Regels:
         re_encoding=r.get("re_export_encoding", "cp1252"),
         hoofdlocatie=r.get("main_location", "Main"),
         pics_menu_tabblad=r.get("pics_tool_menu_tabblad", "PICS import"),
+        klasse_afwijking_ok=frozenset(r.get("klasse_afwijking_toegestaan", [])),
     )
 
 

@@ -184,6 +184,7 @@ def _controles(rij: dict, regels: Regels) -> list[str]:
     if verwacht and verwacht != "ONE TIME" and rij["re_leverancier"] not in ("ONE TIME", verwacht):
         m.append(f"Leverancier weegschaal {rij['weeg_leverancier']} vs RE {rij['re_leverancier']}")
     # klasse retail tegen bulk
-    if rij["bulk_sku"] and _klasse(rij["re_klasse"]) != _klasse(rij["bulk_klasse"]):
+    if (rij["bulk_sku"] and plu not in regels.klasse_afwijking_ok
+            and _klasse(rij["re_klasse"]) != _klasse(rij["bulk_klasse"])):
         m.append(f"Klasse retail {rij['re_klasse']} vs bulk {rij['bulk_klasse']}")
     return m
