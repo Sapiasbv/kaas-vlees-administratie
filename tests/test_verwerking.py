@@ -12,7 +12,10 @@ from kva.verwerking import (
 
 @pytest.fixture
 def regels():
-    return laad_regels()
+    """Echte regels, maar zonder per-stuk-instellingen, zodat de tests niet van de config afhangen."""
+    import dataclasses
+    r = laad_regels()
+    return dataclasses.replace(r, afslag_indeling=dict(r.afslag_indeling, per_stuk={}))
 
 
 def mp(*rijen, tab="Vlees"):
