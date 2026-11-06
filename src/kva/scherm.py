@@ -24,6 +24,7 @@ from kva.verwerking import (  # noqa: E402
     BUITEN, KAAS, KAAS_GEEN_BULK, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in,
     mapping_uit_koppeling, overzicht_per_bulk, pics_regels, totaalcontrole,
 )
+from kva.maand import archiveer, controleer_dekking, lees_re_verkoop, periode_uit_naam, vergelijk  # noqa: E402
 from kva.voorraad import BULK, STUK, lees_tellijst, maak_tellijst, telverschillen, voorraad_lijst  # noqa: E402
 
 st.set_page_config(page_title="Voorraadcorrectie kaas & vlees", page_icon="🥩", layout="wide")
@@ -489,17 +490,79 @@ def pagina_voorraad():
 # ---------------------------------------------------------------- pagina: maandcontrole
 
 def pagina_maand():
+    regels, re_df, koppelingen, _, _ = CTX["bron"]
+    uit = CTX["uit"]
     st.markdown("## Maandcontrole: productie tegen verkoop")
-    st.info("""
-**Wat deze controle doet:** per artikel de productie van de weegschaal (alle Z-afslagen van de maand) naast de
-verkoop in RetailEdge leggen. Is er veel meer geproduceerd dan verkocht, dan verdwijnt er iets
-(derving, diefstal, verkeerd gescand of een verkeerde PLU).
+    st.caption("Per artikel: wat de weegschaal heeft geproduceerd (Z-afslag) naast wat RetailEdge heeft verkocht. "
+               "Veel meer geproduceerd dan verkocht = er verdwijnt iets (derving, diefstal, verkeerde PLU of scan).")
+    with st.expander("Zo maak je de exports", expanded=False):
+        st.markdown("""
+**Weegschaal:** Z-afslag *Artikelen* over precies dezelfde periode (bijv. de hele maand), of de weekafslagen
+die samen die periode dekken. Bestandsnaam zoals `Artikelen_van_20261001_tm_20261031.XLS`.
 
-**Wat er nog nodig is:** een verkoopexport uit RetailEdge per artikel over een maand (SKU, omschrijving,
-aantal of kg verkocht). Stuur een voorbeeld aan Claude, dan wordt deze pagina afgemaakt.
+**RetailEdge:** Reports › **Sales by Items – Grouped by Location**, presets **Summary Report** en
+**Department only**. Kies dezelfde periode. Sla op als **Excel File – Data (\\*.xls)**.
+Welke afdelingen erin staan maakt niet uit: de app pakt alleen de vlees- en kaasartikelen.
 """)
-    afslagen = sorted((CTX["uit"] / "afslagen").glob("Artikelen_van_*"))
-    st.caption(f"Z-afslagen in het archief: {len(afslagen)}. Elke verwerkte afslag wordt bewaard in uitvoer › afslagen.")
+    c1, c2 = st.columns(2)
+    z_bestanden = c1.file_uploader("Z-afslag(en) van de weegschaal", type=["xls", "xlsx", "csv"],
+                                   accept_multiple_files=True, key="maand_z")
+    re_bestanden = c2.file_uploader("Verkoopexport(en) uit RetailEdge (.xls)", type=["xls", "xlsx"],
+                                    accept_multiple_files=True, key="maand_re")
+    if not z_bestanden or not re_bestanden:
+        st.info("Kies links de Z-afslag(en) en rechts de RetailEdge-verkoopexport over dezelfde periode.")
+        return
+
+    perioden = [periode_uit_naam(f.name) for f in z_bestanden]
+    bekend = [x for x in perioden if x]
+    standaard = (min(a for a, _ in bekend), max(b for _, b in bekend)) if bekend else (date.today(), date.today())
+    c1, c2 = st.columns(2)
+    van = c1.date_input("RE-export: van", standaard[0], format="DD-MM-YYYY")
+    tm = c2.date_input("RE-export: t/m", standaard[1], format="DD-MM-YYYY")
+    st.caption("De periode staat niet in het RE-bestand zelf: vul in welke periode je in RetailEdge hebt gekozen.")
+    for m in controleer_dekking(bekend, van, tm) + [f"{f.name}: periode niet te herkennen." for f, x in
+                                                     zip(z_bestanden, perioden) if not x]:
+        st.warning(m)
+
+    try:
+        bron = uit / "maandcontrole" / "bronnen"
+        z = [lees_z_afslag(archiveer(bron, f.name, f.getvalue())) for f in z_bestanden]
+        verkoop = pd.concat([lees_re_verkoop(io.BytesIO(f.getvalue())) for f in re_bestanden])
+        verkoop = (verkoop.groupby("SKU", as_index=False)
+                   .agg({"Omschrijving RE": "first", "Prijs RE": "last", "Handmatig gewogen": "any",
+                         "Verkocht": "sum", "Kost": "sum", "Omzet": "sum"}))
+    except BronFout as e:
+        st.error(str(e))
+        return
+    drempel = st.slider("Afwijking telt pas mee boven (%)", 0, 25, 5,
+                        help="Kleine verschillen (en minder dan 0,5 kg of 0,5 stuk) krijgen status OK.")
+    v = vergelijk(z, verkoop, list(koppelingen), regels, re_df, drempel_pct=drempel)
+    t = v.tabel
+
+    c1, c2, c3 = st.columns(3)
+    kaart(c1, "Geproduceerd (weegschaal)", f"{nl(v.productie_kg)} kg", f"en {nl(v.productie_st, 0)} stuks")
+    kaart(c2, "Verkocht (RetailEdge)", f"{nl(v.verkocht_kg)} kg", f"en {nl(v.verkocht_st, 0)} stuks")
+    kaart(c3, "Verschil in verkoopwaarde", f"$ {nl(v.waarde_verschil, 2)}",
+          "positief = meer geproduceerd dan verkocht", abs(v.waarde_verschil) < 100)
+    st.write("")
+    statussen = list(t.Status.value_counts().items()) if not t.empty else []
+    st.markdown(" · ".join(f"**{n}** {s.lower()}" for s, n in statussen))
+    keuze = st.multiselect("Toon status", [s for s, _ in statussen],
+                           [s for s, _ in statussen if s != "OK"])
+    zicht = t[t.Status.isin(keuze)] if keuze else t
+    st.dataframe(zicht, hide_index=True, use_container_width=True, height=520,
+                 column_config={"PLU": st.column_config.NumberColumn(format="%d"),
+                                "Verschil %": st.column_config.NumberColumn(format="%.1f%%")})
+    st.caption("Let op: wat aan het eind van de periode is geproduceerd en pas daarna verkocht wordt (of andersom), "
+               "geeft een verschil. Over een hele maand valt dat grotendeels weg. "
+               "'Handmatig gewogen' = aan de kassa met de hand gewogen in plaats van met een weegschaal-etiket.")
+    naam = f"Maandcontrole_{van:%Y_%m_%d}_tm_{tm:%Y_%m_%d}.xlsx"
+    if st.button("Opslaan in uitvoer"):
+        pad = vrije_naam(uit / "maandcontrole" / naam)
+        pad.parent.mkdir(parents=True, exist_ok=True)
+        pad.write_bytes(excel_bytes({"Vergelijking": t}))
+        st.success(f"Opgeslagen: {pad}")
+    st.download_button("Download (Excel)", excel_bytes({"Vergelijking": t}), file_name=naam)
 
 
 # ---------------------------------------------------------------- start

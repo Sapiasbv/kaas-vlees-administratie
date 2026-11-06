@@ -23,7 +23,7 @@ Dubbelklik `start_scherm.cmd`. De browser opent op http://localhost:8501 (alleen
 
 Pagina **Voorraad & tellijsten**: bulk- en stuksvoorraad volgens de RE-export (bekijken en als Excel downloaden), tellijsten uitdraaien (`uitvoer/tellijsten/`, vast formaat: tabblad Info, Tellijst bulk/stuks, verborgen tabblad Systeem met de voorraad bij uitdraaien) en een ingevulde tellijst weer inlezen voor de telverschillen.
 
-Pagina **Maandcontrole**: productie weegschaal tegen verkoop RetailEdge. Wacht nog op een voorbeeld van de RE-verkoopexport.
+Pagina **Maandcontrole**: productie weegschaal (Z-afslagen) tegen verkoop RetailEdge, per PLU, over dezelfde periode. RE-rapport: Reports > *Sales by Items - Grouped by Location*, presets *Summary Report* en *Department only*, opslaan als *Excel File - Data (\*.xls)*. Geen kopregel: A SKU, B item, C aantal/kg, D kost, E omzet, F marge, G korting, H marge %, I aandeel. "lb" in kolom B is alleen een label; de hoeveelheid is kg.
 
 De mapping voor vlees en kaas komt rechtstreeks uit de RE-export en weegschaal-lijst (zelfde koppelregels als `mapping`: part nr, en anders naam 'Stuk/… X' = 'Bulk X'). Kaas-PLU's die daar ontbreken maar in het Kaas-tabblad van het PICS-tool staan, worden aangevuld.
 
