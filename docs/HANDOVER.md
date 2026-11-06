@@ -110,7 +110,10 @@ Techniek gekozen: **Python** (`src/kva/`, starten met `python administratie.py`)
 - `pics`: PICS-import uit Z-afslag, zelfde rekenregels als de macro. Kaasafslag 12-18 okt geeft byte-gelijke uitvoer aan de macro. Vlees-testafslag 30-31 juli: 47 PLU's verwerkt, 5 niet in mapping (3521 opgeschoond, 1004 kaas, 3 fruit), totaal sluit op 303,467.
 - Weegschaal-correcties en open redenen staan in `config/mapping_rules.json`.
 
-Nog niet gebouwd: onderdelen 5 en 6 hieronder, en een interface voor collega's (nu opdrachtregel).
+- Scherm (Streamlit, `start_scherm.cmd`) met stappenplan: Z-afslag uploaden, bijzonderheden checken en aanpassen, PICS-lijst maken, importeren in RE. Werkt op de volledige weegschaal-afslag.
+- Eerste volledige afslag 26-10 t/m 1-11-2026: 111 regels; 87 vlees, 1 vlees zonder bulk (3027), 14 kaas, 8 buiten scope, 1 onbekend. Totaal 1.012,65 kg en 61 st sluit. Bijzonderheden: 3521 Kip hele poot (30,1 kg) wordt nog verkocht maar staat niet meer in RE; PLU 1410 en 1411 staan dubbel in de afslag (Geitenkaas en Hotelblok); 3029 Ossenworst wordt per stuk verkocht (bulk in kg).
+
+Nog niet gebouwd: onderdelen 5 en 6 hieronder. Het scherm draait lokaal; delen met collega's (server of hosting) nog te bepalen.
 
 ## 8. Voorstel voor de applicatie (nog te bevestigen met de gebruiker)
 

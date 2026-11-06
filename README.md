@@ -12,7 +12,18 @@ python -m pip install --user -r requirements.txt
 
 Zet de bronbestanden in `data/` (zie `docs/HANDOVER.md` §7). Waar de app zoekt staat in `config/instellingen.toml`; bij een patroon met `*` pakt hij het nieuwste bestand.
 
-## Gebruik
+## Scherm (wekelijkse voorraadcorrectie)
+
+Dubbelklik `start_scherm.cmd`. De browser opent op http://localhost:8501 (alleen op deze computer). Stappen:
+
+1. **Upload de Z-afslag** van afgelopen week (maandag t/m zondag), de export van de hele weegschaal. De app controleert de periode en of deze afslag al verwerkt is.
+2. **Check bijzonderheden**: elke regel wordt ingedeeld als Vlees, Vlees zonder bulk, Kaas (standaard uit: loopt via het PICS-tool), Buiten scope (fruit, bake-off) of Onbekend. Totaalcontrole in kg en stuks tegen de totaalregel. Aanpassen kan: meenemen, hoeveelheid, portie ART NR, bulk SKU en hoeveel kg er van de bulk afgaat (nodig bij stuksartikelen).
+3. **PICS-lijst maken**: controle tegen RE, daarna opslaan in `uitvoer/` (plus een Excel met de verwerkte regels) en downloaden.
+4. **Importeren in RetailEdge** volgens de SOP (Append, nooit Overwrite).
+
+De vlees-mapping komt rechtstreeks uit de RE-export en weegschaal-lijst (zelfde koppelregels als `mapping`); de kaas-mapping uit het tabblad Kaas van het PICS-tool.
+
+## Opdrachtregel
 
 Koppelcontrole en mappingtabel Vlees:
 

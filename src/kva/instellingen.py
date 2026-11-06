@@ -22,6 +22,7 @@ class Regels:
     bulk_sku_prefix: str
     test_plus: frozenset[int]
     kaas_leveranciers: frozenset[str]
+    afslag_indeling: dict
     samengesteld: frozenset[int]
     controleer_part_nr: frozenset[int]
     open_redenen: dict[int, str]
@@ -48,6 +49,7 @@ def laad_regels(pad: Path | None = None) -> Regels:
         bulk_sku_prefix=r["bulk_sku_prefix"],
         test_plus=frozenset(r.get("test_plus", [])),
         kaas_leveranciers=frozenset(r.get("kaas_leveranciers_weegschaal", [])),
+        afslag_indeling=r.get("afslag_indeling", {}),
         samengesteld=frozenset(r.get("samengestelde_artikelen", [])),
         controleer_part_nr=frozenset(r.get("controleer_part_nr", [])),
         open_redenen={int(k): v for k, v in r.get("open_redenen", {}).items()},

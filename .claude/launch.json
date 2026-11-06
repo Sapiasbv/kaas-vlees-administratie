@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "scherm",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "streamlit", "run", "src/kva/scherm.py"],
+      "port": 8501
+    }
+  ]
+}

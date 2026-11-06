@@ -21,6 +21,14 @@
   "bulk_sku_prefix": "2024700",
   "test_plus": [9999, 999999],
   "kaas_leveranciers_weegschaal": ["Van Beek ZV", "Van Beek LV"],
+  "afslag_indeling": {
+    "kaas_plu_bereik": [1000, 1999],
+    "kaas_subgroepen": ["Kaas"],
+    "kaas_meenemen": false,
+    "buiten_scope_subgroepen": ["Fruit", "Overig"],
+    "buiten_scope_leveranciers": ["DIFS"],
+    "totaal_tolerantie": 0.01
+  },
   "samengestelde_artikelen": [3101, 3612, 3615, 3691],
   "controleer_part_nr": [3020, 3025, 3050],
   "open_redenen": {

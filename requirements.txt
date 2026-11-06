@@ -1,6 +1,7 @@
 pandas
 openpyxl
 xlrd
+streamlit
 
 # alleen voor ontwikkelen
 pytest

@@ -1,10 +1,10 @@
 # Bedrijfsdata en exports nooit committen
 data/
-*.csv
-*.xls
-*.xlsx
-*.xlsm
-*.pdf
+*.[cC][sS][vV]
+*.[xX][lL][sS]
+*.[xX][lL][sS][xX]
+*.[xX][lL][sS][mM]
+*.[pP][dD][fF]
 *.pkl
 .env*
 __pycache__/

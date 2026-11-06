@@ -7,8 +7,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
-import hashlib
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -17,43 +15,9 @@ from . import __version__
 from .bronnen import lees_mappingtabel, lees_re_export, lees_weegschaal, lees_z_afslag
 from .instellingen import BronFout, laad_instellingen, laad_regels, uitvoermap, zoek_bestand
 from .koppeling import koppel
+from .opslag import lees_log, schrijf_log, sha256, vrije_naam
 from .mappingtabel import maak_mappingtabel, schrijf_werkboek
 from .pics import maak_pics_import, schrijf_pics_csv
-
-LOG_NAAM = "verwerkte_afslagen.csv"
-
-
-def vrije_naam(pad: Path) -> Path:
-    if not pad.exists():
-        return pad
-    for i in range(2, 1000):
-        p = pad.with_name(f"{pad.stem}_v{i}{pad.suffix}")
-        if not p.exists():
-            return p
-    raise BronFout(f"Geen vrije bestandsnaam voor {pad}")
-
-
-def sha256(pad: Path) -> str:
-    return hashlib.sha256(pad.read_bytes()).hexdigest()
-
-
-def lees_log(map_: Path) -> dict[str, dict]:
-    p = map_ / LOG_NAAM
-    if not p.exists():
-        return {}
-    with open(p, encoding="utf-8", newline="") as f:
-        return {r["sha256"]: r for r in csv.DictReader(f, delimiter=";")}
-
-
-def schrijf_log(map_: Path, bron: Path, hash_: str, uit: Path) -> None:
-    p = map_ / LOG_NAAM
-    nieuw = not p.exists()
-    with open(p, "a", encoding="utf-8", newline="") as f:
-        w = csv.writer(f, delimiter=";")
-        if nieuw:
-            w.writerow(["datum", "bestand", "sha256", "uitvoer"])
-        w.writerow([datetime.now().strftime("%Y-%m-%d %H:%M"), bron.name, hash_, str(uit)])
-
 
 def opdracht_mapping(args, inst, regels) -> int:
     bronnen = {
@@ -102,7 +66,7 @@ def opdracht_pics(args, inst, regels) -> int:
         try:
             if not bron.is_file():
                 raise BronFout(f"Bestand niet gevonden: {bron}")
-            h = sha256(bron)
+            h = sha256(bron.read_bytes())
             if h in log and not args.opnieuw:
                 eerder = log[h]
                 raise BronFout(
@@ -112,7 +76,7 @@ def opdracht_pics(args, inst, regels) -> int:
             doelmap = bron.parent if args.naast_bron else map_
             uit = vrije_naam(doelmap / f"{bron.stem}_PICS_import.csv")
             schrijf_pics_csv(res, uit)
-            schrijf_log(map_, bron, h, uit)
+            schrijf_log(map_, bron.name, h, uit)
             print(res.samenvatting())
             print(f"-> {uit}")
         except BronFout as e:
