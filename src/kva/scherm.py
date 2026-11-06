@@ -6,7 +6,7 @@ Starten: dubbelklik start_scherm.cmd, of: python -m streamlit run src/kva/scherm
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -25,6 +25,28 @@ from kva.verwerking import (  # noqa: E402
 )
 
 st.set_page_config(page_title="Voorraadcorrectie kaas & vlees", page_icon="🥩", layout="wide")
+
+LOGO = Path(__file__).resolve().parents[2] / "assets" / "bondigro_logo.png"
+STAPPEN = ["Z-afslag kiezen", "Controleren", "PICS-lijst maken", "Importeren in RetailEdge"]
+DAGEN = ["ma", "di", "wo", "do", "vr", "za", "zo"]
+MAANDEN = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"]
+
+st.markdown("""
+<style>
+.block-container {padding-top: 2rem; max-width: 1400px;}
+.kva-stappen {display: flex; gap: .5rem; margin: .25rem 0 1.25rem 0; flex-wrap: wrap;}
+.kva-stap {flex: 1 1 160px; padding: .55rem .8rem; border-radius: .5rem; background: #EAF3FA;
+           color: #5B6B7C; font-size: .9rem; border: 1px solid #D2E0EC;}
+.kva-stap b {display: block; font-size: .75rem; letter-spacing: .04em; text-transform: uppercase;}
+.kva-stap.nu {background: #1B6FB5; color: #fff; border-color: #1B6FB5;}
+.kva-stap.klaar {background: #E1EEF9; color: #1D2B3A;}
+.kva-kaart {border: 1px solid #D2E0EC; border-radius: .6rem; padding: .9rem 1rem; height: 100%;}
+.kva-kaart .label {color: #5B6B7C; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;}
+.kva-kaart .waarde {font-size: 1.3rem; font-weight: 700; color: #1D2B3A; margin: .15rem 0;}
+.kva-kaart .uitleg {color: #5B6B7C; font-size: .85rem;}
+.kva-ok {color: #1E7B45;} .kva-let {color: #C2571A;}
+</style>
+""", unsafe_allow_html=True)
 
 BEWERKBAAR = ["Meenemen", "Hoeveelheid", "Portie ART NR", "Bulk SKU", "Bulk afboeken"]
 VOLGORDE = ["Meenemen", "PLU", "Omschrijving", "Melding", "Categorie", "Eenheid", "Hoeveelheid",
@@ -53,32 +75,116 @@ def laad_bronnen(re_pad: str, re_tijd: float, weeg_pad: str, weeg_tijd: float, t
     return regels, re_df, (k_vlees, k_kaas), kaas, namen
 
 
+def dagen_oud(p: Path) -> int:
+    return (datetime.now() - datetime.fromtimestamp(p.stat().st_mtime)).days
+
+
 def bronnen_zijbalk(inst):
-    st.sidebar.header("Bronnen")
+    if LOGO.exists():
+        st.logo(str(LOGO), size="large")
+    st.sidebar.markdown("### Bronbestanden")
+    st.sidebar.caption("De app pakt steeds het nieuwste bestand uit de map `data`.")
     paden = {}
     try:
         for sleutel, naam in (("re_export", "RE-export"), ("weegschaal", "Weegschaal-lijst"), ("pics_tool", "PICS-tool (kaas)")):
             p = zoek_bestand(inst["bronnen"][sleutel])
             paden[sleutel] = p
-            dagen = (datetime.now() - datetime.fromtimestamp(p.stat().st_mtime)).days
-            st.sidebar.markdown(f"**{naam}**  \n{p.name}  \n_{dagen} dagen oud_")
-            if sleutel == "re_export" and dagen > 7:
-                st.sidebar.warning("RE-export is ouder dan een week. Zet een verse export in de map voor de beste controle.")
+            d = dagen_oud(p)
+            oud = sleutel == "re_export" and d > 7
+            st.sidebar.markdown(f"{'🟠' if oud else '🟢'} **{naam}**  \n<small>{p.name} · "
+                                f"{'vandaag' if d == 0 else f'{d} dagen oud'}</small>", unsafe_allow_html=True)
+            if oud:
+                st.sidebar.warning("De RE-export is ouder dan een week. Zet een verse export in de map.")
     except BronFout as e:
         st.sidebar.error(str(e))
         st.stop()
     bron = laad_bronnen(*(x for k in ("re_export", "weegschaal", "pics_tool")
                           for x in (str(paden[k]), paden[k].stat().st_mtime)))
-    for k in bron[2]:
-        st.sidebar.markdown(f"{k.soort.capitalize()}-PLU's: **{k.aantal}**, gekoppeld **{k.gekoppeld}**, open **{k.open}**")
-    if st.sidebar.button("Bronnen opnieuw inlezen"):
+    if st.sidebar.button("Bronnen opnieuw inlezen", use_container_width=True):
         laad_bronnen.clear()
         st.rerun()
-    return bron
+    return bron, paden
 
 
 def kop(nummer: int, titel: str, klaar: bool):
-    st.subheader(f"{'✅' if klaar else '⬜'} Stap {nummer}: {titel}")
+    st.markdown(f"#### {'✅ ' if klaar else ''}Stap {nummer} · {titel}")
+
+
+def koptekst():
+    st.markdown("## Voorraadcorrectie kaas & vlees")
+    st.caption("Elke week: de Z-afslag van de weegschaal omzetten naar een PICS-lijst voor RetailEdge. "
+                   "Wat er van de bulk is gesneden, gaat eraf; wat er als portie is verkocht, komt erbij.")
+
+
+def stappenbalk(huidig: int):
+    blokken = []
+    for i, naam in enumerate(STAPPEN, start=1):
+        klasse = "nu" if i == huidig else "klaar" if i < huidig else ""
+        teken = "✓ " if i < huidig else ""
+        blokken.append(f'<div class="kva-stap {klasse}"><b>Stap {i}</b>{teken}{naam}</div>')
+    st.markdown(f'<div class="kva-stappen">{"".join(blokken)}</div>', unsafe_allow_html=True)
+
+
+def kaart(kolom, label: str, waarde: str, uitleg: str, ok: bool = True):
+    kolom.markdown(
+        f'<div class="kva-kaart"><div class="label">{label}</div>'
+        f'<div class="waarde {"kva-ok" if ok else "kva-let"}">{waarde}</div>'
+        f'<div class="uitleg">{uitleg}</div></div>', unsafe_allow_html=True)
+
+
+def datum_kort(d: date) -> str:
+    return f"{DAGEN[d.weekday()]} {d.day} {MAANDEN[d.month - 1]}"
+
+
+def vorige_week(vandaag: date | None = None) -> tuple[date, date]:
+    """Maandag en zondag van de laatste volledige week."""
+    vandaag = vandaag or date.today()
+    maandag = vandaag - timedelta(days=vandaag.weekday() + 7)
+    return maandag, maandag + timedelta(days=6)
+
+
+def voorblad(koppelingen, paden, uit: Path):
+    """Overzicht voordat er een bestand is gekozen: welke week, staat alles klaar, wat is al gedaan."""
+    van, tm = vorige_week()
+    verwacht = f"Artikelen_van_{van:%Y%m%d}_tm_{tm:%Y%m%d}"
+    log = sorted(lees_log(uit).values(), key=lambda r: r["datum"], reverse=True)
+    al_gedaan = next((r for r in log if r["bestand"].startswith(verwacht)), None)
+
+    c1, c2, c3 = st.columns(3)
+    if al_gedaan:
+        kaart(c1, "Deze week", "Al verwerkt ✓", f"{datum_kort(van)} t/m {datum_kort(tm)}, op {al_gedaan['datum']}")
+    else:
+        kaart(c1, "Te verwerken", f"{datum_kort(van)} – {datum_kort(tm)}", f"Bestand: <code>{verwacht}.XLS</code>")
+    for kol, k in zip((c2, c3), koppelingen):
+        ok = k.open == 0
+        kaart(kol, f"{k.soort.capitalize()}: koppeling", f"{k.gekoppeld} van {k.aantal}",
+              "Alle PLU's hebben een bulk." if ok else f"{k.open} PLU's zonder bulk: die worden niet afgeboekt.", ok)
+    re_oud = dagen_oud(paden["re_export"])
+    if re_oud > 7:
+        st.warning(f"De RE-export is {re_oud} dagen oud. Zet eerst een verse export in `data\\re_export`.")
+    st.write("")
+    return log
+
+
+def laatst_verwerkt(log: list[dict]):
+    with st.expander(f"Eerder verwerkt ({len(log)})", expanded=False):
+        if not log:
+            st.caption("Nog niets verwerkt.")
+            return
+        st.dataframe(pd.DataFrame([{"Verwerkt op": r["datum"], "Z-afslag": r["bestand"],
+                                    "PICS-lijst": Path(r["uitvoer"]).name} for r in log[:10]]),
+                     hide_index=True, use_container_width=True)
+
+
+def uitleg():
+    with st.expander("Hoe werkt het?"):
+        st.markdown("""
+1. **Z-afslag kiezen.** Exporteer op de weegschaal *Artikelen* van maandag t/m zondag en kies dat bestand hier.
+   De hele weegschaal mag erin staan; fruit, bakkerij en testartikelen worden vanzelf overgeslagen.
+2. **Controleren.** De app laat zien wat er per PLU gebeurt. Alleen regels met een melding vragen aandacht.
+3. **PICS-lijst maken.** Eén klik; de lijst wordt opgeslagen in de map `uitvoer`.
+4. **Importeren in RetailEdge.** Volg de stappen onderaan. Kies altijd **Append**, nooit Overwrite.
+""")
 
 
 # ---------------------------------------------------------------- pagina
@@ -86,23 +192,32 @@ def kop(nummer: int, titel: str, klaar: bool):
 def main():
     inst = laad_instellingen()
     uit = uitvoermap(inst)
-    regels, re_df, (k, k_kaas), kaas, bulk_namen = bronnen_zijbalk(inst)
+    (regels, re_df, (k, k_kaas), kaas, bulk_namen), paden = bronnen_zijbalk(inst)
     ss = st.session_state
 
-    st.title("Voorraadcorrectie kaas & vlees (PICS)")
-    st.caption("Wekelijks: Z-afslag van de weegschaal inlezen, controleren en een PICS-lijst maken voor RetailEdge.")
+    koptekst()
+    huidig = 4 if "opgeslagen" in ss else 3 if "pics" in ss else 2 if ss.get("upload") is not None else 1
+    stappenbalk(huidig)
 
     # ---------------- stap 1
-    with st.container(border=True):
-        kop(1, "Upload de Z-afslag van afgelopen week (maandag t/m zondag)", ss.get("upload") is not None)
-        bestand = st.file_uploader("Z-afslag van de hele weegschaal (.XLS, .xlsx of .csv)",
+    if ss.get("upload") is None:
+        log = voorblad((k, k_kaas), paden, uit)
+    stap1 = st.container(border=True)
+    with stap1:
+        kop(1, "Kies de Z-afslag van afgelopen week (maandag t/m zondag)", ss.get("upload") is not None)
+        bestand = st.file_uploader("Sleep het bestand hierheen of klik op *Browse files*. "
+                                   "Het is de export van de hele weegschaal (.XLS, .xlsx of .csv).",
                                    type=["xls", "xlsx", "csv"], key="upload")
         if bestand is None:
             for s in ("tabel", "afslag", "pics", "opgeslagen"):
                 ss.pop(s, None)
-            st.info("Kies het bestand `Artikelen_van_..._tm_....XLS` uit de map Z-afslagen.")
-            st.stop()
+            st.caption("Te vinden op de gedeelde schijf, map *Slagerij en kaas administratie* › Z-afslagen.")
+    if bestand is None:
+        laatst_verwerkt(log)
+        uitleg()
+        st.stop()
 
+    with stap1:
         data = bestand.getvalue()
         h = sha256(data)
         if ss.get("afslag", {}).get("hash") != h:

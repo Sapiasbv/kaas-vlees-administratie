@@ -8,3 +8,11 @@ gatherUsageStats = false
 
 [client]
 toolbarMode = "viewer"
+
+# Bondigro-kleuren (zelfde als de inkoop-app; rood is voor het logo)
+[theme]
+base = "light"
+primaryColor = "#1B6FB5"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#EAF3FA"
+textColor = "#1D2B3A"
