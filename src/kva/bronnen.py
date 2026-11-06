@@ -19,9 +19,6 @@ RE_VERPLICHT = [
     "Inv_ClassID", "Loc_Settings_LocID",
 ]
 Z_VERPLICHT = ["Winkel", "Artikel", "Aantallen", "Gewicht"]
-WEEGSCHAAL_KOLOMMEN = ["PLU", "Artikel", "Leverancier", "Bestelnummer", "_leeg1", "_leeg2", "Weegschaalcode", "Prijs"]
-# indeling sinds 6-11-2026: kolom C is een groepnummer, daarna leverancier, bestelnummer, code, prijs
-WEEGSCHAAL_KOLOMMEN_MET_GROEP = ["PLU", "Artikel", "Groep", "Leverancier", "Bestelnummer", "Weegschaalcode", "Prijs"]
 MAPPING_KOPPEN = {"plu": "Portie PLU", "artnr": "Portie ART NR", "bulk": "Bulk SKU (RetailEdge)"}
 NVT_BULK = "n.v.t. (zelfde artikel)"
 
@@ -98,28 +95,68 @@ def lees_re_export(pad: Path, regels: Regels) -> pd.DataFrame:
 
 # ---------------------------------------------------------------- weegschaal
 
-def lees_weegschaal(pad: Path) -> pd.DataFrame:
-    """Weegschaal item-overzicht (xlsx zonder kopregel). Kolom PLU wordt int."""
+def _aandeel(kol: pd.Series, patroon: str) -> float:
+    """Deel van de gevulde cellen dat aan het patroon voldoet (0 als de kolom leeg is)."""
+    v = kol.dropna().astype(str).str.strip()
+    v = v[v.ne("")]
+    return float(v.str.fullmatch(patroon).mean()) if len(v) else 0.0
+
+
+def herken_weegschaal_kolommen(df: pd.DataFrame, leveranciers: set[str]) -> dict[str, int]:
+    """Zoek de kolommen op inhoud, want de opmaak van de export wisselt.
+
+    PLU = kolom met de meeste nummers van 3-6 cijfers; Artikel = de kolom erna;
+    Leverancier = kolom met de meeste bekende leveranciersnamen; Bestelnummer = de kolom erna;
+    Weegschaalcode = eerste getallenkolom daarna; Prijs = eerste kolom daarna met bedragen als '18,59'.
+    """
+    n = df.shape[1]
+    plu = max(range(n), key=lambda j: _aandeel(df.iloc[:, j], r"\d{3,6}(\.0+)?"))
+    if _aandeel(df.iloc[:, plu], r"\d{3,6}(\.0+)?") < 0.8:
+        raise BronFout("Weegschaal-lijst: geen kolom met PLU-nummers gevonden.")
+    namen = {x.lower() for x in leveranciers}
+
+    def lev_score(j):
+        v = df.iloc[:, j].dropna().astype(str).str.strip().str.lower()
+        return v.isin(namen).sum()
+
+    lev = max(range(plu + 2, n), key=lev_score, default=None)
+    if lev is None or lev_score(lev) == 0 or lev + 1 >= n:
+        raise BronFout("Weegschaal-lijst: geen kolom met leveranciers (Van Kooten, Deli Nova, ...) gevonden.")
+    kol = {"PLU": plu, "Artikel": plu + 1, "Leverancier": lev, "Bestelnummer": lev + 1}
+    rest = range(lev + 2, n)
+    code = next((j for j in rest if _aandeel(df.iloc[:, j], r"\d+([.,]\d+)?") > 0.9), None)
+    if code is not None:
+        kol["Weegschaalcode"] = code
+        prijs = next((j for j in range(code + 1, n) if _aandeel(df.iloc[:, j], r"\d+,\d{2}") > 0.9), None)
+        if prijs is not None:
+            kol["Prijs"] = prijs
+    return kol
+
+
+def lees_weegschaal(pad: Path, leveranciers: set[str] | None = None) -> pd.DataFrame:
+    """Weegschaal item-overzicht (xlsx zonder kopregel). Kolommen worden op inhoud herkend. PLU wordt int."""
     df = pd.read_excel(pad, header=None, dtype=str)
     if df.shape[1] < 4:
         raise BronFout(f"Weegschaal-lijst {pad.name} heeft {df.shape[1]} kolommen, verwacht minstens 4 (PLU, Artikel, Leverancier, Bestelnummer).")
-    # Indeling herkennen: staat in kolom C een groepnummer (cijfers) of een leveranciersnaam?
-    kol_c = df.iloc[:, 2].dropna().astype(str).str.strip()
-    met_groep = len(kol_c) > 0 and kol_c.str.fullmatch(r"\d+").mean() > 0.9
-    kolommen = WEEGSCHAAL_KOLOMMEN_MET_GROEP if met_groep else WEEGSCHAAL_KOLOMMEN
-    df = df.iloc[:, : len(kolommen)]
-    df.columns = kolommen[: df.shape[1]]
+    if leveranciers is None:
+        from .instellingen import laad_regels
+        leveranciers = set(laad_regels().leveranciers_weegschaal_naar_re)
+    try:
+        kol = herken_weegschaal_kolommen(df, leveranciers)
+    except BronFout as e:
+        raise BronFout(f"{e} Bestand: {pad.name}") from None
+    df = pd.DataFrame({naam: df.iloc[:, j] for naam, j in kol.items()})
     df["PLU"] = df.PLU.map(geheel_getal)
     df = df[df.PLU.notna()].copy()
     if df.empty:
-        raise BronFout(f"Weegschaal-lijst {pad.name} bevat geen PLU-nummers in kolom A.")
+        raise BronFout(f"Weegschaal-lijst {pad.name} bevat geen PLU-nummers.")
     df["PLU"] = df.PLU.astype(int)
     for k in ("Artikel", "Leverancier", "Bestelnummer"):
         df[k] = df[k].map(tekst)
     dubbel = df.PLU[df.PLU.duplicated()].unique()
     if len(dubbel):
         raise BronFout(f"Weegschaal-lijst {pad.name} bevat dubbele PLU's: {', '.join(map(str, dubbel))}")
-    return df.drop(columns=[c for c in df.columns if c.startswith("_")]).reset_index(drop=True)
+    return df.reset_index(drop=True)
 
 
 # ---------------------------------------------------------------- Z-afslag

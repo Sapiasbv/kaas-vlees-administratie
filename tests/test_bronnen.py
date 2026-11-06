@@ -19,6 +19,11 @@ def schrijf(pad, rijen):
     # nieuwe indeling (6-11-2026): groepnummer in kolom C
     [[3011, "Serranoham, p/kg", 6, "Van Kooten", 2145, 15180, "25,08"],
      [3026, "Iberico diepvries, p/kg", None, None, None, None, "32,16"]],
+    # ruwe export (6-11-2026, 21 kolommen): PLU in kolom B, groepnaam ertussen, extra kolommen erachter
+    [[None, 3011, "Serranoham, p/kg", None, 6, "Vleeswaren", None, None, "Van Kooten", 2145, None, None, 15180,
+      "25,08", "Btw 0.00 % (3)", "0.6154", "18-03-2026", None, None, 7, "X"],
+     [None, 3026, "Iberico diepvries, p/kg", None, 6, "Vleeswaren", None, None, None, None, None, None, None,
+      "32,16", "Btw 0.00 % (3)", None, None, None, None, 7, "X"]],
 ])
 def test_weegschaal_beide_indelingen(tmp_path, rijen):
     w = lees_weegschaal(schrijf(tmp_path / "w.xlsx", rijen))
