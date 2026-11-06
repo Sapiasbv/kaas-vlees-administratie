@@ -134,7 +134,10 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
 
         meld: list[str] = []
         artnr, bulk, mee = "", "", False
-        if plu in vlees.regels:
+        if plu in regels.negeren:
+            cat = BUITEN
+            meld.append(f"Buiten scope (genegeerd: {regels.negeren[plu]})")
+        elif plu in vlees.regels:
             m = vlees.regels[plu]
             artnr, bulk = m.artnr, m.bulk_sku
             cat, mee = (VLEES, True) if bulk else (VLEES_GEEN_BULK, True)

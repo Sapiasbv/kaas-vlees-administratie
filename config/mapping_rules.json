@@ -38,17 +38,19 @@
   "samengestelde_artikelen": [3101, 3612, 3615, 3691],
   "controleer_part_nr": [3020, 3025, 3050],
   "open_redenen": {
-    "3027": "Pastrami (One time): geen bulk-koppeling",
-    "3050": "Rolladeschijf: part nr ontbreekt in RE (weegschaal zegt 2098 = Buik)",
-    "3025": "Prosciutto: geen bulk-item",
-    "3562": "Foods USA-nummer onbekend",
-    "3563": "Foods USA-nummer onbekend",
-    "3564": "Foods USA-nummer onbekend",
-    "3121": "Pate: tijdelijk buiten scope",
-    "3122": "Pate: tijdelijk buiten scope",
-    "3123": "Pate: tijdelijk buiten scope",
-    "3124": "Pate: tijdelijk buiten scope",
-    "3125": "Pate: tijdelijk buiten scope"
+    "3025": "Prosciutto: bulk-item wordt aangemaakt (RE-import 6-11-2026)",
+    "3050": "Rolladeschijf: part nr 2098 komt met RE-import 6-11-2026"
+  },
+  "_uitleg_negeren": "PLU's die bewust buiten de koppeling en de PICS-correctie vallen (beslissing Sjors 6-11-2026).",
+  "negeren_plus": {
+    "3027": "Pastrami: vendor One time",
+    "3644": "Rundervink: vendor One time",
+    "3121": "Pate", "3122": "Pate", "3123": "Pate", "3124": "Pate", "3125": "Pate",
+    "608000": "Kaas plakken 400gr: stuksartikel",
+    "8718836781742": "Kaas plakken 500gr: stuksartikel",
+    "2135": "Droge worst: scan-artikel in RE", "2136": "Droge worst: scan-artikel in RE",
+    "2137": "Droge worst: scan-artikel in RE", "2138": "Droge worst: scan-artikel in RE",
+    "2410": "Geen vlees (kruiden GPS-Miami)", "2670": "Geen vlees (kruiden GPS-Miami)"
   },
   "weegschaal_correcties": {
     "3508": {"bestelnummer": "310006", "reden": "Weegschaal zegt 310007; RE, facturen en alle andere kip-PLU's zeggen 310006 (bevestigd 6-11-2026)"},

@@ -116,6 +116,9 @@ Techniek gekozen: **Python** (`src/kva/`, starten met `python administratie.py`)
 - Kaas toegevoegd (6-11-2026): eigen koppelcontrole (klasse 0302, kaas-bulks), koppeling op part nr en anders op naam. Kaas 24/24 gekoppeld, gelijk aan het Kaas-tabblad; kaasafslag okt geeft dezelfde uitvoer als de macro. Koppeling op naam staat ook aan voor vlees: vlees nu 161/163 (13 bulks bestonden al zonder part nr). Open: 3025 Prosciutto, 3050 Rolladeschijf. Actielijst: 52 punten (44 vlees, 8 kaas).
 - Kaas wordt in het scherm standaard meegenomen. Afspraak met Nick nodig: het oude PICS-tool niet meer voor dezelfde afslagen gebruiken.
 
+- Beslissingen 6-11-2026 (Sjors): genegeerd 3027, 3644, patés 3121-3125, kaas plakken, droge worst 2135-2138 (scan), 2410/2670 (geen vlees); samengestelde artikelen blijven op een bulk (mogen in de min). Vastgelegd in `config/mapping_rules.json` (`negeren_plus`).
+- RE-import 6-11-2026 (`scripts/re_import_2026_11_06.py`, uitvoer in `uitvoer/`): 8 items bijwerken (part nrs honingham 237 en rolladeschijf 2098, klassen 3004/3304/3724/3645/3647), 5 nieuw (bulk Prosciutto zonder SKU, 3120, 3217, 3090, 3091). Na import + verse export verwacht: vlees 160 PLU's, kaas 24/24.
+
 Nog niet gebouwd: onderdelen 5 en 6 hieronder. Het scherm draait lokaal; delen met collega's (server of hosting) nog te bepalen.
 
 ## 8. Voorstel voor de applicatie (nog te bevestigen met de gebruiker)

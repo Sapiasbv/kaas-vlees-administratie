@@ -8,7 +8,8 @@ from kva.mappingtabel import bulk_artikelnaam, maak_mappingtabel
 
 @pytest.fixture
 def regels():
-    return laad_regels()
+    import dataclasses
+    return dataclasses.replace(laad_regels(), negeren={})
 
 
 def re_export(items):

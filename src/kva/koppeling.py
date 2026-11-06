@@ -92,7 +92,8 @@ def koppel(weegschaal: pd.DataFrame, re_df: pd.DataFrame, regels: Regels, soort:
         for sku, desc in zip(bulks.Inv_Sku, bulks.Inv_Desc):
             namen.setdefault(naam_sleutel(desc), []).append(sku)
 
-    w = weegschaal[~weegschaal.PLU.isin(regels.test_plus)].copy()
+    genegeerd = weegschaal[weegschaal.PLU.isin(regels.negeren)]
+    w = weegschaal[~weegschaal.PLU.isin(regels.test_plus) & ~weegschaal.PLU.isin(regels.negeren)].copy()
     w["artnr"] = w.PLU.map(plu_naar_artnr)
     w["in_re"] = w.artnr.isin(re_df.index)
     is_kaas = w.Leverancier.isin(regels.kaas_leveranciers)
@@ -146,7 +147,10 @@ def koppel(weegschaal: pd.DataFrame, re_df: pd.DataFrame, regels: Regels, soort:
         gebruikt = set(plus.bulk_sku)
     else:
         gebruikt = set()
-    zonder = bulks[~bulks.Inv_Sku.isin(gebruikt)][["Inv_Sku", "Inv_Desc", "Inv_VendorID", "part_nr"]].reset_index(drop=True)
+    # bulks van genegeerde PLU's (zelfde naam) niet als 'bulk zonder PLU' melden
+    genegeerde_namen = {naam_sleutel(a) for a in genegeerd.Artikel}
+    zonder = bulks[~bulks.Inv_Sku.isin(gebruikt) & ~bulks.Inv_Desc.map(naam_sleutel).isin(genegeerde_namen)]
+    zonder = zonder[["Inv_Sku", "Inv_Desc", "Inv_VendorID", "part_nr"]].reset_index(drop=True)
     return Koppelresultaat(soort=soort, plus=plus, bulks=bulks, dubbele_part_nrs=dubbel,
                            niet_in_re=niet_in_re, bulks_zonder_plu=zonder)
 

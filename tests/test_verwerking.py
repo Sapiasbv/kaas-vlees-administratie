@@ -15,7 +15,7 @@ def regels():
     """Echte regels, maar zonder per-stuk-instellingen, zodat de tests niet van de config afhangen."""
     import dataclasses
     r = laad_regels()
-    return dataclasses.replace(r, afslag_indeling=dict(r.afslag_indeling, per_stuk={}))
+    return dataclasses.replace(r, afslag_indeling=dict(r.afslag_indeling, per_stuk={}), negeren={})
 
 
 def mp(*rijen, tab="Vlees"):
@@ -108,3 +108,11 @@ def test_per_stuk_bulk_in_stuks(regels):
     r2 = dataclasses.replace(regels, afslag_indeling=dict(regels.afslag_indeling, per_stuk={"3029": "stuk"}))
     t = deel_in(Z, mp((3029, "203029", "B1")), None, r2).tabel.set_index("PLU")
     assert t.at[3029, "Bulk afboeken"] == 4 and t.at[3029, "Melding"] == ""
+
+
+def test_genegeerde_plu(regels):
+    import dataclasses
+    r2 = dataclasses.replace(regels, negeren={3027: "Pastrami: vendor One time"})
+    t = deel_in(Z, mp((3027, "203027", "B1")), None, r2).tabel.set_index("PLU")
+    assert t.at[3027, "Categorie"] == BUITEN and not t.at[3027, "Meenemen"]
+    assert "One time" in t.at[3027, "Melding"]

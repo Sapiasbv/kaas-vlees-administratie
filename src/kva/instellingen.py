@@ -26,6 +26,7 @@ class Regels:
     samengesteld: frozenset[int]
     controleer_part_nr: frozenset[int]
     open_redenen: dict[int, str]
+    negeren: dict[int, str]
     weegschaal_correcties: dict[int, dict]
     leveranciers_weegschaal_naar_re: dict[str, str]
     re_encoding: str
@@ -53,6 +54,7 @@ def laad_regels(pad: Path | None = None) -> Regels:
         samengesteld=frozenset(r.get("samengestelde_artikelen", [])),
         controleer_part_nr=frozenset(r.get("controleer_part_nr", [])),
         open_redenen={int(k): v for k, v in r.get("open_redenen", {}).items()},
+        negeren={int(k): v for k, v in r.get("negeren_plus", {}).items()},
         weegschaal_correcties={int(k): v for k, v in r.get("weegschaal_correcties", {}).items()},
         leveranciers_weegschaal_naar_re=r["vendor_map_weegschaal_to_RE"],
         re_encoding=r.get("re_export_encoding", "cp1252"),
