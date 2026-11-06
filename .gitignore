@@ -6,6 +6,6 @@ data/
 *.xlsm
 *.pdf
 *.pkl
-.env
+.env*
 __pycache__/
 .venv/
