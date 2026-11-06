@@ -52,7 +52,7 @@ def test_indeling_en_totaal(regels):
         "Kaas Hotelblok": KAAS, "Geitenkaas": KAAS, "Appeltaart": BUITEN, "Kip hele poot": ONBEKEND}
     assert t.Meenemen.to_dict()["Kaas walnoot"] is False  # kaas via PICS-tool
     assert t.at["Ossenworst per stuk", "Eenheid"] == "st"
-    assert "Per stuk" in t.at["Ossenworst per stuk", "Melding"]
+    assert "geen gewicht per stuk" in t.at["Ossenworst per stuk", "Melding"]
     assert "niet (meer) in RE" in t.at["Kip hele poot", "Melding"]
     assert "meerdere keren" in t.at["Geitenkaas", "Melding"]
     assert all(ok for _, ok, _ in totaalcontrole(ind))
@@ -85,3 +85,22 @@ def test_pics_regels_fouten(regels):
 def test_periode(naam, aantal_meldingen):
     p = controleer_periode(naam, vandaag=date(2026, 11, 6))
     assert len(p.meldingen) == aantal_meldingen
+
+
+def test_per_stuk_gewicht(regels):
+    import dataclasses
+    cfg = dict(regels.afslag_indeling, per_stuk={"3029": 0.2})
+    r2 = dataclasses.replace(regels, afslag_indeling=cfg)
+    vlees = mp((3029, "203029", "2024700105764"))
+    t = deel_in(Z, vlees, None, r2).tabel.set_index("PLU")
+    assert t.at[3029, "Bulk afboeken"] == pytest.approx(0.8)  # 4 st x 0,2 kg
+    assert "geen gewicht" not in t.at[3029, "Melding"]
+    lijst = pics_regels(t.reset_index())
+    assert "2024700105764,-0.8" in lijst.regels and lijst.waarschuwingen == []
+
+
+def test_per_stuk_bulk_in_stuks(regels):
+    import dataclasses
+    r2 = dataclasses.replace(regels, afslag_indeling=dict(regels.afslag_indeling, per_stuk={"3029": "stuk"}))
+    t = deel_in(Z, mp((3029, "203029", "B1")), None, r2).tabel.set_index("PLU")
+    assert t.at[3029, "Bulk afboeken"] == 4 and t.at[3029, "Melding"] == ""

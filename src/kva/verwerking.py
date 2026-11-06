@@ -102,6 +102,7 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
     buiten_lev = set(cfg.get("buiten_scope_leveranciers", []))
     re_skus = set(re_df.index) if re_df is not None else None
     bulk_namen = bulk_namen or {}
+    per_stuk = {int(k): w for k, w in cfg.get("per_stuk", {}).items()}
 
     res = Indeling(tabel=pd.DataFrame(columns=KOLOMMEN))
     rijen = []
@@ -161,8 +162,14 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
             else:
                 meld.append("PLU niet in de mapping (geen vleesklasse in RE?): vul bulk in of laat weg")
 
+        afboeken = hoeveelheid
         if eenheid == "st" and cat in (VLEES, VLEES_GEEN_BULK):
-            meld.append("Per stuk verkocht: bulk staat in kg, vul 'Bulk afboeken' in kg in")
+            regel_st = per_stuk.get(plu)
+            if regel_st is None:
+                meld.append("Per stuk verkocht, geen gewicht per stuk bekend: controleer 'Bulk afboeken' "
+                            "(staat nu gelijk aan het aantal) en leg het vast in config")
+            elif regel_st != "stuk":
+                afboeken = hoeveelheid * Decimal(str(regel_st))
         if hoeveelheid < 0:
             meld.append("Negatieve hoeveelheid (retour?)")
         if re_skus is not None and mee:
@@ -174,7 +181,7 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
             "Meenemen": mee, "PLU": plu, "Omschrijving": omschr, "Leverancier": lev, "Subgroep": sub,
             "Categorie": cat, "Eenheid": eenheid, "Hoeveelheid": float(hoeveelheid),
             "Portie ART NR": artnr, "Bulk SKU": _bulk_label(bulk, bulk_namen),
-            "Bulk afboeken": float(hoeveelheid) if bulk else None, "Melding": "; ".join(meld),
+            "Bulk afboeken": float(afboeken) if bulk else None, "Melding": "; ".join(meld),
         })
     if rijen:
         t = pd.DataFrame(rijen, columns=KOLOMMEN)
@@ -267,7 +274,7 @@ def pics_regels(tabel: pd.DataFrame, re_skus: set[str] | None = None) -> PicsLij
             if af is None:
                 fouten.append(f"PLU {plu}: 'Bulk afboeken' is leeg terwijl er een bulk is ingevuld.")
                 continue
-            if r.get("Eenheid") == "st" and af == q:
+            if r.get("Eenheid") == "st" and af == q and "geen gewicht per stuk" in tekst(r.get("Melding")):
                 waarsch.append(f"PLU {plu}: per stuk ({formatteer(q)} st) en bulk afboeken is ook {formatteer(af)}: klopt dat in kg?")
         elif af not in (None, Decimal(0)):
             waarsch.append(f"PLU {plu}: 'Bulk afboeken' ingevuld maar geen Bulk SKU: genegeerd.")
