@@ -1,0 +1,11 @@
+# Bedrijfsdata en exports nooit committen
+data/
+*.csv
+*.xls
+*.xlsx
+*.xlsm
+*.pdf
+*.pkl
+.env
+__pycache__/
+.venv/

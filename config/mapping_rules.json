@@ -1,0 +1,19 @@
+{
+  "retail_article_from_plu": "200000 + PLU",
+  "bulk_sku_pattern": "2024700 + 5 cijfers teller + EAN-controlecijfer (door gebruiker aangeleverd)",
+  "bulk_name": "Bulk <leveranciersnummer>, <omschrijving>  (zonder nummer: Bulk, <omschrijving>)",
+  "retail_part_vendor": "<leveranciersnummer>, <omschrijving>  (eigen productie / geen nummer: RE artikelnummer)",
+  "bulk_part_vendor": "<leveranciersnummer> (alleen het nummer)",
+  "link_rule": "retail Inv_Part_Vendor begint met bulk Inv_Part_Vendor, of is er gelijk aan, of de tekst achter de komma is gelijk",
+  "vendor_map_weegschaal_to_RE": {
+    "Van Kooten": "VAN KOOTEN", "Deli Nova": "DELI NOVA", "Deelen ZV": "DEELEN", "Deelen LV": "DEELEN - LV",
+    "Foods USA": "FOODS USA", "HHB": "HHB", "One time": "ONE TIME", "Eigen productie": "EIGEN PRODUCTIE",
+    "DIFS": "DIFS DIEPVRIES", "GPS-Miami": "GPS-MIAMI"
+  },
+  "department": {"vleeswaren_classes": ["0301", "0303"], "vleeswaren": "03. Vleeswaren", "other": "02. Slagerij vers"},
+  "classes": {"kip": "0201: Kip", "rund": "0202: Rund", "varken": "0203: Varkensvlees", "vis": "0204: Vis (Vers)", "vega": "0205: Vega/vleesvervangers", "vleeswaren": "0301: Vleeswaren vers gesneden"},
+  "ignore": ["vendor ONE TIME bij controles", "retail afdelingen 13. Basismand en 14. Hardlopers", "salades, fruit, DIFS (geen vlees)", "kaas (apart proces, werkt al)", "pates (tijdelijk)"],
+  "taxable": false,
+  "re_export_encoding": "cp1252",
+  "main_location": "Main"
+}
