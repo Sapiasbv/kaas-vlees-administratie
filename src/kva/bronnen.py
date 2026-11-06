@@ -20,6 +20,8 @@ RE_VERPLICHT = [
 ]
 Z_VERPLICHT = ["Winkel", "Artikel", "Aantallen", "Gewicht"]
 WEEGSCHAAL_KOLOMMEN = ["PLU", "Artikel", "Leverancier", "Bestelnummer", "_leeg1", "_leeg2", "Weegschaalcode", "Prijs"]
+# indeling sinds 6-11-2026: kolom C is een groepnummer, daarna leverancier, bestelnummer, code, prijs
+WEEGSCHAAL_KOLOMMEN_MET_GROEP = ["PLU", "Artikel", "Groep", "Leverancier", "Bestelnummer", "Weegschaalcode", "Prijs"]
 MAPPING_KOPPEN = {"plu": "Portie PLU", "artnr": "Portie ART NR", "bulk": "Bulk SKU (RetailEdge)"}
 NVT_BULK = "n.v.t. (zelfde artikel)"
 
@@ -101,8 +103,12 @@ def lees_weegschaal(pad: Path) -> pd.DataFrame:
     df = pd.read_excel(pad, header=None, dtype=str)
     if df.shape[1] < 4:
         raise BronFout(f"Weegschaal-lijst {pad.name} heeft {df.shape[1]} kolommen, verwacht minstens 4 (PLU, Artikel, Leverancier, Bestelnummer).")
-    df = df.iloc[:, :8]
-    df.columns = WEEGSCHAAL_KOLOMMEN[: df.shape[1]]
+    # Indeling herkennen: staat in kolom C een groepnummer (cijfers) of een leveranciersnaam?
+    kol_c = df.iloc[:, 2].dropna().astype(str).str.strip()
+    met_groep = len(kol_c) > 0 and kol_c.str.fullmatch(r"\d+").mean() > 0.9
+    kolommen = WEEGSCHAAL_KOLOMMEN_MET_GROEP if met_groep else WEEGSCHAAL_KOLOMMEN
+    df = df.iloc[:, : len(kolommen)]
+    df.columns = kolommen[: df.shape[1]]
     df["PLU"] = df.PLU.map(geheel_getal)
     df = df[df.PLU.notna()].copy()
     if df.empty:
