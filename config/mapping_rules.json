@@ -15,5 +15,30 @@
   "ignore": ["vendor ONE TIME bij controles", "retail afdelingen 13. Basismand en 14. Hardlopers", "salades, fruit, DIFS (geen vlees)", "kaas (apart proces, werkt al)", "pates (tijdelijk)"],
   "taxable": false,
   "re_export_encoding": "cp1252",
-  "main_location": "Main"
+  "main_location": "Main",
+
+  "vlees_klassen": ["0201", "0202", "0203", "0204", "0205", "0301", "0303", "0603"],
+  "bulk_sku_prefix": "2024700",
+  "test_plus": [9999, 999999],
+  "kaas_leveranciers_weegschaal": ["Van Beek ZV", "Van Beek LV"],
+  "samengestelde_artikelen": [3101, 3612, 3615, 3691],
+  "controleer_part_nr": [3020, 3025, 3050],
+  "open_redenen": {
+    "3027": "Pastrami (One time): geen bulk-koppeling",
+    "3050": "Rolladeschijf: part nr ontbreekt in RE (weegschaal zegt 2098 = Buik)",
+    "3025": "Prosciutto: geen bulk-item",
+    "3562": "Foods USA-nummer onbekend",
+    "3563": "Foods USA-nummer onbekend",
+    "3564": "Foods USA-nummer onbekend",
+    "3121": "Pate: tijdelijk buiten scope",
+    "3122": "Pate: tijdelijk buiten scope",
+    "3123": "Pate: tijdelijk buiten scope",
+    "3124": "Pate: tijdelijk buiten scope",
+    "3125": "Pate: tijdelijk buiten scope"
+  },
+  "weegschaal_correcties": {
+    "3508": {"bestelnummer": "310006", "reden": "Weegschaal zegt 310007; RE, facturen en alle andere kip-PLU's zeggen 310006 (bevestigd 6-11-2026)"},
+    "3020": {"bestelnummer": "2114", "reden": "Katenspek: weegschaal zegt 3020, pakbon Van Kooten zegt 2114"}
+  },
+  "pics_tool_menu_tabblad": "PICS import"
 }

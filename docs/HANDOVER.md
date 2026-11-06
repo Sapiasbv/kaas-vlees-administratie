@@ -74,7 +74,7 @@ Geen aannames zonder bronnen. Vraag bij twijfel.
 
 Data:
 - 15 PLU's zonder bulk-koppeling: patés 3121-3126, Pastrami 3027, Rundervink 3644, Sausage links 3043, Kippendij met bot 3562-3564 (Foods USA-nummer onbekend), Prosciutto 3025 (geen bulk), Rolladeschijf 3050 (RE leeg, weegschaal zegt 2098 = Buik).
-- 3508 Kipshoarma: weegschaal 310007, RE 310006. Welk nummer klopt?
+- 3508 Kipshoarma: 310006 klopt (bevestigd 6-11-2026); weegschaal-lijst (310007) nog corrigeren.
 - Weegschaal-lijst bevat fouten: bestelnr 93 bij 3025 en 3063; leverancier Deelen ZV bij 3641/3651/3652/3682 terwijl RE en bulk Van Kooten zijn; bestelnr 3020 bij Katenspek moet 2114 zijn.
 - Weegschaal-PLU's die niet in RE staan: 3120 Lamsbout, 3026 Iberico diepvries, 3217 Kalfs hart zwezerik, 3090/3091 Ham di Pasku (alleen oude items 2024700084939/946 zonder part nr), 2135-2138 Droge Worst (scan-items).
 - Klasseverschillen retail/bulk (o.a. 203716, 203724, 203645, 203004).
@@ -102,6 +102,15 @@ De PICS-aanpak (Z-afslag, mappingtabel, PICS-import-CSV met + op portie en - op 
 
 `Vlees_Sapias_TO_systeem_1.2.xlsm`, `Vlees_Sapias_Voorraad_2.0_eenvoudig.xlsx`, `RE_en_lijst_opschoning_2026_11_04.xlsx`, `RetailEdge_Import_Bulk_en_PLU_2026_11_04.xlsx`, `RetailEdge_Import_Bijwerken_Koppeling_2026_11_05.xlsx`, `Vlees_koppeling_controle_2026_11_04.xlsx`, `Vlees_mappingtabel_voorstel_2026_11_05.xlsx`.
 Bronnen die nodig zijn om de scripts te draaien: RE-inventory-export, weegschaal item-overzicht, RE-importtemplate, Z-afslagen, factuur/pakbon-data. Leg die in `data/` (genegeerd door git).
+
+## 7c. Stand van de applicatie (6-11-2026)
+
+Techniek gekozen: **Python** (`src/kva/`, starten met `python administratie.py`). Gebouwd:
+- `mapping`: koppelcontrole + mappingtabel Vlees + actielijst. Op de RE-export van 5-11: 163 PLU's, 148 gekoppeld, 15 open; gelijk aan het voorstel van 5-11.
+- `pics`: PICS-import uit Z-afslag, zelfde rekenregels als de macro. Kaasafslag 12-18 okt geeft byte-gelijke uitvoer aan de macro. Vlees-testafslag 30-31 juli: 47 PLU's verwerkt, 5 niet in mapping (3521 opgeschoond, 1004 kaas, 3 fruit), totaal sluit op 303,467.
+- Weegschaal-correcties en open redenen staan in `config/mapping_rules.json`.
+
+Nog niet gebouwd: onderdelen 5 en 6 hieronder, en een interface voor collega's (nu opdrachtregel).
 
 ## 8. Voorstel voor de applicatie (nog te bevestigen met de gebruiker)
 

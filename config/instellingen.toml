@@ -1,0 +1,11 @@
+# Instellingen voor de Kaas & Vlees administratie.
+# Paden zijn relatief aan de projectmap, of volledig (bijv. de gedeelde schijf).
+# Een patroon met * kiest automatisch het nieuwste bestand (op wijzigingsdatum).
+
+[bronnen]
+re_export   = "data/re_export/*.csv"
+weegschaal  = "data/weegschaal/*.xlsx"
+pics_tool   = "data/pics_tool/Genereer_PICS_import*.xlsm"
+
+[uitvoer]
+map = "uitvoer"

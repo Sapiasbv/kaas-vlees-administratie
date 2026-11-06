@@ -1,0 +1,9 @@
+[project]
+name = "kaas-vlees-administratie"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["pandas", "openpyxl", "xlrd"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

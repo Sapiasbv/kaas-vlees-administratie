@@ -9,3 +9,6 @@ data/
 .env*
 __pycache__/
 .venv/
+
+# Uitvoer van de app (bevat bedrijfsgegevens)
+uitvoer/

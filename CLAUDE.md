@@ -20,7 +20,9 @@ Project: Kaas & Vlees administratie voor Sapias / Bondigro (Bonaire). Huidige sc
 - Z-afslag is `.XLS`: `xlrd` nodig. Weegschaal-lijst en templates zijn `.xlsx` (openpyxl).
 - `.xlsm` met macro's niet met openpyxl opslaan (VBA gaat verloren). Gebruik directe OOXML-aanpassing of lever een los bestand.
 - Regels en mappings staan in `config/mapping_rules.json`.
-- `legacy_scripts/` zijn werkende scripts uit de Cowork-sessie. Ze verwijzen naar oude paden (`/tmp/claude-0/...`, `/root/.claude/uploads/...`) en moeten worden herschreven naar `src/` met paden uit een configuratie.
+- De applicatie staat in `src/kva/` (Python). Starten: `python administratie.py mapping` of `python administratie.py pics <afslag>`. Paden in `config/instellingen.toml`.
+- PICS-uitvoer moet gelijk blijven aan de macro in `Genereer_PICS_import.xlsm` (Aantallen voor Gewicht, porties eerst, 3 decimalen). Draai `python -m pytest` na elke wijziging.
+- `legacy_scripts/` zijn de oude Cowork-scripts (alleen referentie; oude paden).
 
 ## Verificatie
 Controleer elk resultaat met een telling tegen de bron (aantal PLU's, aantal bulk-items, aantal gekoppeld) en laat die tellingen aan de gebruiker zien.
