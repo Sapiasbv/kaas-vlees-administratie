@@ -66,7 +66,7 @@ Geen aannames zonder bronnen. Vraag bij twijfel.
 1. Facturen sinds de nulmeting verwerkt in beide Excel-versies.
 2. RE en de oude lijst "Vlees en vleeswaren assortiment en nummers" opgeschoond tegen de weegschaal-lijst (23 RE-items verwijderd, 6 met voorraad).
 3. Import-bestanden gemaakt voor 91 nieuwe bulk-items en daarna voor bijwerken van bestaande items. De gebruiker heeft de bulk-items aangemaakt en de bijwerk-import (5-11-2026) verwerkt.
-4. Controle op 4-11-2026: 163 vlees-PLU's in RE, 111 bulk-items. Na de import van 5-11 zijn **148 van 163 PLU's gekoppeld** (gesimuleerd, nog niet met een verse export bevestigd).
+4. Controle op de RE-export van 5-11-2026 (na alle wijzigingen): 163 vlees-PLU's in RE, 110 bulk-items (het dubbele Bulk Kip Cervelaat is verwijderd). **148 van 163 PLU's zijn gekoppeld** (bevestigd), 15 niet. Geen dubbele bulk-part nrs. Resterende verschillen: vendor ONE TIME bij 3543-3545 (genegeerd) en klasse retail/bulk bij 3004, 3304, 3645, 3647, 3716, 3724.
 5. Pakbon Van Kooten 26766731 (5-11-2026) gebruikt om ontbrekende nummers te vinden (2114, 393, 5034, 2966, 3010, 111, 2210).
 6. Het PICS-tool onderzocht en een voorstel voor de nieuwe tabel Vlees gemaakt: 163 rijen (148 met bulk, 15 open).
 
@@ -77,7 +77,6 @@ Data:
 - 3508 Kipshoarma: weegschaal 310007, RE 310006. Welk nummer klopt?
 - Weegschaal-lijst bevat fouten: bestelnr 93 bij 3025 en 3063; leverancier Deelen ZV bij 3641/3651/3652/3682 terwijl RE en bulk Van Kooten zijn; bestelnr 3020 bij Katenspek moet 2114 zijn.
 - Weegschaal-PLU's die niet in RE staan: 3120 Lamsbout, 3026 Iberico diepvries, 3217 Kalfs hart zwezerik, 3090/3091 Ham di Pasku (alleen oude items 2024700084939/946 zonder part nr), 2135-2138 Droge Worst (scan-items).
-- Bulk `2024700106280` (Bulk, Kip Cervelaat) is dubbel met Bulk 354 en kan uit RE.
 - Klasseverschillen retail/bulk (o.a. 203716, 203724, 203645, 203004).
 - Nog niet verwerkt: oudere facturen van vóór de nulmeting, 37 factuurartikelen zonder match.
 
@@ -86,7 +85,20 @@ Proces:
 - Samengestelde artikelen (Gourmetschotel 3101, Biefreepjes 3612/3615, BBQ-pakket 3691) halen uit meerdere bulks: buiten correctie.
 - Inkoop automatisch inlezen (pakbon/factuur-PDF's) en TO's, zodat typefouten verdwijnen.
 
-## 7. Eerder opgeleverde bestanden (niet in de repo, staan in de map Vlees administratie)
+## 7. Bronbestanden in `data/` (niet in git)
+
+- `data/re_export/inventory_export_2026_11_05.csv`: actuele RE-export.
+- `data/weegschaal/weegschaal_item_overzicht_2026_11_04.xlsx`: leidende weegschaal-lijst.
+- `data/templates/RetailEdge_CSV_Inventory_Import_Template.xlsx`: RE-importtemplate.
+- `data/pics_tool/`: KOPIE van `Genereer_PICS_import.xlsm` en de SOP. Het origineel op SharePoint blijft staan en blijft in gebruik; werk alleen in de kopie.
+- `data/z_afslagen/`: vlees-testafslag 30-31 juli en een kaasafslag met bijbehorende PICS-import als formaatvoorbeeld.
+- `data/facturen/`: verwerkte factuurregels sinds de nulmeting (131 regels, CSV) en pakbon Van Kooten 26766731. De originele factuur-PDF's staan nog in de factuurmap van de gebruiker.
+- `data/opleveringen/`: eerdere resultaten (mappingtabel-voorstel, koppelcontrole, importbestanden).
+- `data/excel_administratie/`: de twee Excel-versies van de voorraadadministratie.
+
+De PICS-aanpak (Z-afslag, mappingtabel, PICS-import-CSV met + op portie en - op bulk) blijft de basis van de applicatie.
+
+## 7b. Eerder opgeleverde bestanden (niet in de repo, staan in de map Vlees administratie)
 
 `Vlees_Sapias_TO_systeem_1.2.xlsm`, `Vlees_Sapias_Voorraad_2.0_eenvoudig.xlsx`, `RE_en_lijst_opschoning_2026_11_04.xlsx`, `RetailEdge_Import_Bulk_en_PLU_2026_11_04.xlsx`, `RetailEdge_Import_Bijwerken_Koppeling_2026_11_05.xlsx`, `Vlees_koppeling_controle_2026_11_04.xlsx`, `Vlees_mappingtabel_voorstel_2026_11_05.xlsx`.
 Bronnen die nodig zijn om de scripts te draaien: RE-inventory-export, weegschaal item-overzicht, RE-importtemplate, Z-afslagen, factuur/pakbon-data. Leg die in `data/` (genegeerd door git).
