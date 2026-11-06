@@ -1,6 +1,11 @@
 # CLAUDE.md
 
-Project: vlees-administratie voor Sapias / Bondigro (Bonaire). Lees eerst `docs/HANDOVER.md`.
+Project: Kaas & Vlees administratie voor Sapias / Bondigro (Bonaire). Huidige scope: vlees en vleeswaren; kaas werkt al met het PICS-tool en komt later. Lees eerst `docs/HANDOVER.md`.
+
+## Locaties
+- Projectmap: `C:\Claude\Kaas & Vlees administratie`.
+- Gedeelde schijf (kaas-tool en Z-afslagen): `C:\Users\BonaireHospitalitySu\OneDrive - SAPIAS\Share-BDG-General - Documents\Slagerij en kaas administratie`.
+- Eerdere opleveringen: `C:\Users\BonaireHospitalitySu\OneDrive - SAPIAS\Desktop\Claude\Vlees administratie`.
 
 ## Werkafspraken
 - Taal: Nederlands. Antwoorden kort, feitelijk, met cijfers. Geen gokwerk tenzij gevraagd. Sarcasme is welkom.

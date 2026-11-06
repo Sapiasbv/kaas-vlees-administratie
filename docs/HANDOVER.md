@@ -1,7 +1,12 @@
-# Overdracht: vlees-administratie (Sapias / Bondigro, Bonaire)
+# Overdracht: Kaas & Vlees administratie (Sapias / Bondigro, Bonaire)
 
 Stand: 6 november 2026. Opgesteld vanuit een Claude-sessie (Cowork) om het werk voort te zetten in Claude Code.
 Alle feiten komen uit de gegevens die in die sessie zijn gebruikt. Controleer cijfers altijd opnieuw tegen een verse export.
+
+## Locaties
+- Projectmap (repo): `C:\Claude\Kaas & Vlees administratie`.
+- Gedeelde schijf met PICS-tool en Z-afslagen: `...\Share-BDG-General - Documents\Slagerij en kaas administratie`.
+- Eerdere opleveringen (Excel-bestanden): `...\OneDrive - SAPIAS\Desktop\Claude\Vlees administratie`.
 
 ## 1. Doel
 
