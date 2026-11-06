@@ -29,7 +29,7 @@
     "buiten_scope_leveranciers": ["DIFS"],
     "totaal_tolerantie": 0.01,
     "_uitleg_per_stuk": "PLU's die per stuk verkocht worden terwijl de bulk in kg staat: kg per stuk. Bulk afboeken = aantal x kg per stuk. Bulk per stuk geteld: zet hier 'stuk'.",
-    "per_stuk": {}
+    "per_stuk": {"3029": "stuk"}
   },
   "samengestelde_artikelen": [3101, 3612, 3615, 3691],
   "controleer_part_nr": [3020, 3025, 3050],
