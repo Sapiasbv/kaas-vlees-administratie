@@ -32,15 +32,18 @@ def opdracht_mapping(args, inst, regels) -> int:
         tool = lees_mappingtabel(bronnen["PICS-tool (vergelijking)"], regels.pics_menu_tabblad)
     except BronFout as e:
         print(f"Let op: geen vergelijking met het PICS-tool ({e})")
-    k = koppel(weeg, re_df, regels)
-    tabel = maak_mappingtabel(k, regels)
-    uit = vrije_naam(uitvoermap(inst) / f"Vlees_mappingtabel_{datetime.now():%Y_%m_%d}.xlsx")
-    schrijf_werkboek(uit, k, tabel, bronnen, tool)
+    resultaten = []
+    for soort in ("vlees", "kaas"):
+        k = koppel(weeg, re_df, regels, soort)
+        resultaten.append((k, maak_mappingtabel(k, regels)))
+    uit = vrije_naam(uitvoermap(inst) / f"Mappingtabel_kaas_vlees_{datetime.now():%Y_%m_%d}.xlsx")
+    schrijf_werkboek(uit, resultaten, bronnen, tool)
     for naam, p in bronnen.items():
         print(f"{naam}: {p.name}")
-    print(f"Vlees-PLU's in RE: {k.aantal} | gekoppeld: {k.gekoppeld} | open: {k.open}")
-    print(f"Bulk-items vlees: {len(k.bulks)} | dubbele bulk part nrs: {len(k.dubbele_part_nrs)}")
-    print(f"Weegschaal-PLU's niet in RE: {len(k.niet_in_re)}")
+    for k, _ in resultaten:
+        print(f"{k.soort.capitalize()}: {k.aantal} PLU's in RE | gekoppeld {k.gekoppeld} | open {k.open} | "
+              f"bulk-items {len(k.bulks)} (zonder PLU {len(k.bulks_zonder_plu)}) | dubbele part nrs {len(k.dubbele_part_nrs)} | "
+              f"weegschaal niet in RE {len(k.niet_in_re)}")
     print(f"Klaar: {uit}")
     return 0
 
@@ -92,7 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--versie", action="version", version=f"kva {__version__}")
     sub = ap.add_subparsers(dest="opdracht", required=True)
 
-    m = sub.add_parser("mapping", help="koppelcontrole en mappingtabel Vlees maken")
+    m = sub.add_parser("mapping", help="koppelcontrole en mappingtabellen Vlees en Kaas maken")
     m.add_argument("--re-export", help="pad naar RE-export (standaard: nieuwste in config)")
     m.add_argument("--weegschaal", help="pad naar weegschaal-lijst (standaard: nieuwste in config)")
 

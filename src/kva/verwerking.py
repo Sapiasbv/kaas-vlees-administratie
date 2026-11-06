@@ -22,6 +22,7 @@ from .pics import formatteer
 VLEES = "Vlees"
 VLEES_GEEN_BULK = "Vlees, geen bulk"
 KAAS = "Kaas"
+KAAS_GEEN_BULK = "Kaas, geen bulk"
 BUITEN = "Buiten scope"
 ONBEKEND = "Onbekend"
 
@@ -142,12 +143,18 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
             if plu in regels.samengesteld:
                 meld.append("Samengesteld artikel: afboeking van maar een bulk, controleer")
         elif (kaas and plu in kaas.regels) or kaas_van <= plu <= kaas_tot or sub in kaas_sub or lev in regels.kaas_leveranciers:
-            cat, mee = KAAS, kaas_mee
             if kaas and plu in kaas.regels:
                 artnr, bulk = kaas.regels[plu].artnr, kaas.regels[plu].bulk_sku
+                cat, mee = (KAAS if bulk else KAAS_GEEN_BULK), kaas_mee
+                if not bulk:
+                    meld.append("Geen kaas-bulk: portie wordt bijgeboekt, geen bulk afgeboekt")
             else:
-                artnr = plu_naar_artnr(plu)
-                meld.append("Kaas-PLU staat niet in het Kaas-tabblad van het PICS-tool")
+                cat, artnr = KAAS_GEEN_BULK, plu_naar_artnr(plu)
+                if re_skus is not None and artnr not in re_skus:
+                    meld.append("Kaas-PLU staat niet in RE, maar wordt wel verkocht: RE of weegschaal bijwerken")
+                    artnr = ""
+                else:
+                    meld.append("Kaas-PLU niet in de kaas-mapping: vul bulk in of laat weg")
             if not kaas_mee:
                 meld.insert(0, "Kaas gaat via het PICS-tool (Nick)")
         elif sub in buiten_sub or lev in buiten_lev:
@@ -163,7 +170,7 @@ def deel_in(z: pd.DataFrame, vlees: Mapping, kaas: Mapping | None, regels: Regel
                 meld.append("PLU niet in de mapping (geen vleesklasse in RE?): vul bulk in of laat weg")
 
         afboeken = hoeveelheid
-        if eenheid == "st" and cat in (VLEES, VLEES_GEEN_BULK):
+        if eenheid == "st" and cat in (VLEES, VLEES_GEEN_BULK, KAAS, KAAS_GEEN_BULK):
             regel_st = per_stuk.get(plu)
             if regel_st is None:
                 meld.append("Per stuk verkocht, geen gewicht per stuk bekend: controleer 'Bulk afboeken' "

@@ -33,6 +33,8 @@ def bulk_artikelnaam(desc: str) -> str:
 
 def maak_mappingtabel(k: Koppelresultaat, regels: Regels) -> pd.DataFrame:
     naar_weeg = regels.leveranciers_re_naar_weegschaal
+    if not k.aantal:
+        return pd.DataFrame(columns=KOLOMMEN, dtype=object)
     p = k.plus.copy()
     p["_open"] = p.bulk_sku.eq("")
     p = p.sort_values(["_open", "bulk_sku", "PLU"])
@@ -81,12 +83,20 @@ def verschil_met_tool(tabel: pd.DataFrame, tool: Mapping | None, tabblad: str = 
 
 def actielijst(k: Koppelresultaat) -> pd.DataFrame:
     rijen = []
-    for r in k.plus[k.plus.meldingen.ne("")].sort_values("PLU").itertuples(index=False):
-        for m in r.meldingen.split("; "):
-            rijen.append([r.PLU, r.omschrijving, r.re_part_nr or None, r.weeg_bestelnr or None, m])
+    if k.aantal:
+        for r in k.plus[k.plus.meldingen.ne("")].sort_values("PLU").itertuples(index=False):
+            for m in r.meldingen.split("; "):
+                rijen.append([k.soort, r.PLU, r.omschrijving, r.re_part_nr or None, r.weeg_bestelnr or None, m])
     for pv, skus in k.dubbele_part_nrs.items():
-        rijen.append([None, None, pv, None, f"Dubbel bulk part nr in RE: {', '.join(skus)}"])
-    return pd.DataFrame(rijen, columns=["PLU", "Omschrijving", "RE part nr", "Weegschaal bestelnr", "Actie / melding"])
+        rijen.append([k.soort, None, None, pv, None, f"Dubbel bulk part nr in RE: {', '.join(skus)}"])
+    if k.bulks_zonder_plu is not None:
+        for b in k.bulks_zonder_plu.itertuples(index=False):
+            rijen.append([k.soort, None, b.Inv_Desc, b.part_nr or None, None,
+                          f"Bulk {b.Inv_Sku} heeft geen PLU (part nr past bij geen enkele PLU): koppelen of opruimen"])
+    for b in k.niet_in_re.itertuples(index=False):
+        rijen.append([k.soort, b.PLU, b.Artikel, None, b.Bestelnummer or None,
+                      "Staat op de weegschaal maar niet in RE: aanmaken in RE of van de weegschaal halen"])
+    return pd.DataFrame(rijen, columns=["Soort", "PLU", "Omschrijving", "RE part nr", "Weegschaal bestelnr", "Actie / melding"])
 
 
 def _blad(wb: Workbook, titel: str, df: pd.DataFrame, breedtes: list[int], geel=None):
@@ -115,46 +125,58 @@ def _blad(wb: Workbook, titel: str, df: pd.DataFrame, breedtes: list[int], geel=
     return ws
 
 
-def schrijf_werkboek(pad: Path, k: Koppelresultaat, tabel: pd.DataFrame, bronnen: dict[str, Path],
+TABBLAD = {"vlees": "Vlees", "kaas": "Kaas"}
+
+
+def schrijf_werkboek(pad: Path, resultaten: list[tuple[Koppelresultaat, pd.DataFrame]], bronnen: dict[str, Path],
                      tool: Mapping | None = None) -> Path:
+    """Een werkboek met per soort een mappingtabel in PICS-tool-formaat, plus actielijst en verschillen."""
     if pad.exists():
         raise FileExistsError(f"Bestaat al, niet overschreven: {pad}")
     wb = Workbook()
     uitleg = wb.active
     uitleg.title = "Uitleg"
-    verschil = verschil_met_tool(tabel, tool)
-    acties = actielijst(k)
+    acties = pd.concat([actielijst(k) for k, _ in resultaten], ignore_index=True)
+    verschillen = []
+    for k, tabel in resultaten:
+        v = verschil_met_tool(tabel, tool, TABBLAD[k.soort])
+        v.insert(0, "Soort", k.soort)
+        verschillen.append(v)
+    verschil = pd.concat(verschillen, ignore_index=True)
     regels = [
-        ("Mappingtabel Vlees (voor tabblad \"Vlees\" in Genereer_PICS_import.xlsm)", True),
+        ("Mappingtabellen Vlees en Kaas (voor de tabbladen in Genereer_PICS_import.xlsm)", True),
         (f"Gemaakt op {date.today():%d-%m-%Y} met kva (Kaas & Vlees administratie).", False),
         ("", False),
         ("Bronnen:", True),
         *[(f"  {naam}: {p.name}", False) for naam, p in bronnen.items()],
         ("", False),
         ("Tellingen:", True),
-        (f"  Vlees-PLU's in RE (weegschaal-lijst, vleesklassen): {k.aantal}", False),
-        (f"  Gekoppeld aan een bulk-item: {k.gekoppeld}", False),
-        (f"  Zonder bulk (open): {k.open}", False),
-        (f"  Bulk-items vlees in RE: {len(k.bulks)}; dubbele bulk part nrs: {len(k.dubbele_part_nrs)}", False),
-        (f"  Weegschaal-PLU's (geen kaas) die niet in RE staan: {len(k.niet_in_re)}", False),
-        (f"  Meldingen in de actielijst: {len(acties)}", False),
+    ]
+    for k, _ in resultaten:
+        regels += [
+            (f"  {TABBLAD[k.soort]}: {k.aantal} PLU's in RE, {k.gekoppeld} gekoppeld, {k.open} zonder bulk; "
+             f"{len(k.bulks)} bulk-items, {len(k.bulks_zonder_plu)} zonder PLU, {len(k.dubbele_part_nrs)} dubbele part nrs; "
+             f"{len(k.niet_in_re)} weegschaal-PLU's niet in RE", False),
+        ]
+    regels += [
+        (f"  Regels in de actielijst: {len(acties)}", False),
         (f"  Verschillen met het huidige PICS-tool: {len(verschil)}", False),
         ("", False),
         ("Gebruik:", True),
-        ("  Tabblad 'Vlees (nieuw)' heeft dezelfde kolommen als het tabblad Vlees in het PICS-tool.", False),
+        ("  De tabbladen 'Vlees (nieuw)' en 'Kaas (nieuw)' hebben dezelfde kolommen als het PICS-tool.", False),
         ("  Geel = nog aan te vullen of te controleren (kolom 'Let op').", False),
         ("  Type: 1-op-1 = een bulk voor een PLU; Splitser (nx) = een bulk voor n PLU's.", False),
         ("  Het PICS-tool zelf wordt door dit programma nooit gewijzigd.", False),
     ]
     for i, (t, vet) in enumerate(regels, 1):
         uitleg.cell(i, 1, t).font = Font(bold=vet, size=13 if i == 1 else 11)
-    uitleg.column_dimensions["A"].width = 120
+    uitleg.column_dimensions["A"].width = 140
 
-    _blad(wb, "Vlees (nieuw)", tabel, [14, 18, 16, 44, 16, 10, 12, 42, 70],
-          geel=lambda rij: rij[0].value == "?" or bool(rij[8].value))
-    _blad(wb, "Actielijst", acties, [8, 40, 40, 22, 90])
-    _blad(wb, "Niet in RE", k.niet_in_re, [8, 42, 18, 18])
-    _blad(wb, "Verschil met PICS-tool", verschil, [10, 42, 22, 18, 60])
+    for k, tabel in resultaten:
+        _blad(wb, f"{TABBLAD[k.soort]} (nieuw)", tabel, [14, 18, 16, 44, 16, 10, 12, 42, 70],
+              geel=lambda rij: rij[0].value == "?" or bool(rij[8].value))
+    _blad(wb, "Actielijst", acties, [8, 8, 40, 40, 22, 90])
+    _blad(wb, "Verschil met PICS-tool", verschil, [8, 10, 42, 22, 18, 60])
     pad.parent.mkdir(parents=True, exist_ok=True)
     wb.save(pad)
     return pad

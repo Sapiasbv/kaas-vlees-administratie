@@ -20,11 +20,11 @@ from kva.koppeling import koppel  # noqa: E402
 from kva.opslag import lees_log, schrijf_log, sha256, vrije_naam  # noqa: E402
 from kva.pics import formatteer  # noqa: E402
 from kva.verwerking import (  # noqa: E402
-    BUITEN, KAAS, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in,
+    BUITEN, KAAS, KAAS_GEEN_BULK, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in,
     mapping_uit_koppeling, pics_regels, totaalcontrole,
 )
 
-st.set_page_config(page_title="Voorraadcorrectie vlees", page_icon="🥩", layout="wide")
+st.set_page_config(page_title="Voorraadcorrectie kaas & vlees", page_icon="🥩", layout="wide")
 
 BEWERKBAAR = ["Meenemen", "Hoeveelheid", "Portie ART NR", "Bulk SKU", "Bulk afboeken"]
 VOLGORDE = ["Meenemen", "PLU", "Omschrijving", "Melding", "Categorie", "Eenheid", "Hoeveelheid",
@@ -43,11 +43,14 @@ def actie_nodig(melding: str) -> bool:
 def laad_bronnen(re_pad: str, re_tijd: float, weeg_pad: str, weeg_tijd: float, tool_pad: str, tool_tijd: float):
     regels = laad_regels()
     re_df = lees_re_export(Path(re_pad), regels)
-    k = koppel(lees_weegschaal(Path(weeg_pad)), re_df, regels)
+    weeg = lees_weegschaal(Path(weeg_pad))
+    k_vlees, k_kaas = koppel(weeg, re_df, regels, "vlees"), koppel(weeg, re_df, regels, "kaas")
+    # kaas: koppeling uit RE; PLU's die daar ontbreken maar wel in het Kaas-tabblad van het PICS-tool staan, als aanvulling
     tool = lees_mappingtabel(Path(tool_pad), regels.pics_menu_tabblad)
     kaas = Mapping(regels={p: m for p, m in tool.regels.items() if m.tabblad == "Kaas"})
-    namen = dict(zip(k.bulks.Inv_Sku, k.bulks.Inv_Desc))
-    return regels, re_df, k, kaas, namen
+    kaas.regels.update(mapping_uit_koppeling(k_kaas).regels)
+    namen = dict(zip(k_vlees.bulks.Inv_Sku, k_vlees.bulks.Inv_Desc)) | dict(zip(k_kaas.bulks.Inv_Sku, k_kaas.bulks.Inv_Desc))
+    return regels, re_df, (k_vlees, k_kaas), kaas, namen
 
 
 def bronnen_zijbalk(inst):
@@ -66,8 +69,8 @@ def bronnen_zijbalk(inst):
         st.stop()
     bron = laad_bronnen(*(x for k in ("re_export", "weegschaal", "pics_tool")
                           for x in (str(paden[k]), paden[k].stat().st_mtime)))
-    k = bron[2]
-    st.sidebar.markdown(f"Vlees-PLU's: **{k.aantal}**, gekoppeld **{k.gekoppeld}**, open **{k.open}**")
+    for k in bron[2]:
+        st.sidebar.markdown(f"{k.soort.capitalize()}-PLU's: **{k.aantal}**, gekoppeld **{k.gekoppeld}**, open **{k.open}**")
     if st.sidebar.button("Bronnen opnieuw inlezen"):
         laad_bronnen.clear()
         st.rerun()
@@ -83,10 +86,10 @@ def kop(nummer: int, titel: str, klaar: bool):
 def main():
     inst = laad_instellingen()
     uit = uitvoermap(inst)
-    regels, re_df, k, kaas, bulk_namen = bronnen_zijbalk(inst)
+    regels, re_df, (k, k_kaas), kaas, bulk_namen = bronnen_zijbalk(inst)
     ss = st.session_state
 
-    st.title("Voorraadcorrectie vlees (PICS)")
+    st.title("Voorraadcorrectie kaas & vlees (PICS)")
     st.caption("Wekelijks: Z-afslag van de weegschaal inlezen, controleren en een PICS-lijst maken voor RetailEdge.")
 
     # ---------------- stap 1
@@ -140,8 +143,9 @@ def main():
     with st.container(border=True):
         kop(2, "Check bijzonderheden en pas eventueel aan", "pics" in ss)
         tel = tabel.Categorie.value_counts()
-        kol = st.columns(5)
-        for c, cat in zip(kol, (VLEES, VLEES_GEEN_BULK, KAAS, BUITEN, ONBEKEND)):
+        cats = (VLEES, VLEES_GEEN_BULK, KAAS, KAAS_GEEN_BULK, BUITEN, ONBEKEND)
+        kol = st.columns(len(cats))
+        for c, cat in zip(kol, cats):
             c.metric(cat, int(tel.get(cat, 0)))
 
         for naam, ok, tekst_ in totaalcontrole(ind, regels.afslag_indeling.get("totaal_tolerantie", 0.01)):
@@ -152,7 +156,7 @@ def main():
         st.markdown(
             "Hieronder per regel wat er gebeurt. **Meenemen** = komt in de PICS-lijst. "
             "Je kunt aanpassen: meenemen aan/uit, hoeveelheid, portie ART NR, bulk SKU en hoeveel er van de bulk "
-            "afgaat (in kg). Kaas staat standaard uit, omdat die via het PICS-tool loopt.")
+            "afgaat. Kaas en vlees worden allebei verwerkt.")
         keuze = st.radio("Toon", ["Alleen actie nodig", "Alle meldingen", "Alle regels"], horizontal=True)
         if keuze == "Alleen actie nodig":
             zicht = tabel[tabel.Melding.map(actie_nodig)]
@@ -229,6 +233,9 @@ def main():
 3. **Inventory > PICS > PICS Update**: For Location = juiste vestiging, PICS Target Table = **Inventory Table**.
 """)
         st.error("Kies bij PICS Update altijd **Append (Add to) Quantities**, nooit Overwrite. Overwrite vervangt de hele voorraad.")
+        if regels.afslag_indeling.get("kaas_meenemen"):
+            st.warning("Deze lijst bevat ook kaas. Verwerk dezelfde afslag dus **niet** ook nog in het PICS-tool "
+                       "(Genereer_PICS_import.xlsm), anders wordt de kaas dubbel geboekt.")
 
 
 main()

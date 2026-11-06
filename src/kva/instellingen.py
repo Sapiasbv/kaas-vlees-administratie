@@ -18,7 +18,7 @@ class BronFout(Exception):
 
 @dataclass(frozen=True)
 class Regels:
-    vlees_klassen: tuple[str, ...]
+    soorten: dict[str, dict]
     bulk_sku_prefix: str
     test_plus: frozenset[int]
     kaas_leveranciers: frozenset[str]
@@ -45,7 +45,7 @@ def laad_regels(pad: Path | None = None) -> Regels:
     with open(pad, encoding="utf-8") as f:
         r = json.load(f)
     return Regels(
-        vlees_klassen=tuple(r["vlees_klassen"]),
+        soorten=r["soorten"],
         bulk_sku_prefix=r["bulk_sku_prefix"],
         test_plus=frozenset(r.get("test_plus", [])),
         kaas_leveranciers=frozenset(r.get("kaas_leveranciers_weegschaal", [])),

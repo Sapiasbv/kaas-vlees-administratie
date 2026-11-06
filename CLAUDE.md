@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Project: Kaas & Vlees administratie voor Sapias / Bondigro (Bonaire). Huidige scope: vlees en vleeswaren; kaas werkt al met het PICS-tool en komt later. Lees eerst `docs/HANDOVER.md`.
+Project: Kaas & Vlees administratie voor Sapias / Bondigro (Bonaire). Scope: vlees, vleeswaren en kaas (kaas sinds 6-11-2026 ook in deze app). Lees eerst `docs/HANDOVER.md`.
 
 ## Locaties
 - Projectmap: `C:\Claude\Kaas & Vlees administratie`.

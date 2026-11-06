@@ -6,7 +6,7 @@ import pytest
 from kva.bronnen import Mapping, MappingRegel
 from kva.instellingen import laad_regels
 from kva.verwerking import (
-    BUITEN, KAAS, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in, pics_regels, totaalcontrole,
+    BUITEN, KAAS, KAAS_GEEN_BULK, ONBEKEND, VLEES, VLEES_GEEN_BULK, controleer_periode, deel_in, pics_regels, totaalcontrole,
 )
 
 
@@ -52,8 +52,9 @@ def test_indeling_en_totaal(regels):
     t = ind.tabel.set_index("Omschrijving")
     assert t.Categorie.to_dict() == {
         "Biefstuk": VLEES, "Ossenworst per stuk": VLEES, "Pastrami": VLEES_GEEN_BULK, "Kaas walnoot": KAAS,
-        "Kaas Hotelblok": KAAS, "Geitenkaas": KAAS, "Appeltaart": BUITEN, "Kip hele poot": ONBEKEND}
-    assert t.Meenemen.to_dict()["Kaas walnoot"] is False  # kaas via PICS-tool
+        "Kaas Hotelblok": KAAS_GEEN_BULK, "Geitenkaas": KAAS_GEEN_BULK, "Appeltaart": BUITEN, "Kip hele poot": ONBEKEND}
+    assert t.Meenemen.to_dict()["Kaas walnoot"] is True  # kaas wordt nu ook verwerkt
+    assert t.Meenemen.to_dict()["Kaas Hotelblok"] is False  # niet in kaas-mapping
     assert t.at["Ossenworst per stuk", "Eenheid"] == "st"
     assert "geen gewicht per stuk" in t.at["Ossenworst per stuk", "Melding"]
     assert "niet (meer) in RE" in t.at["Kip hele poot", "Melding"]

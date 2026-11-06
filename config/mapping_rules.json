@@ -8,23 +8,27 @@
   "vendor_map_weegschaal_to_RE": {
     "Van Kooten": "VAN KOOTEN", "Deli Nova": "DELI NOVA", "Deelen ZV": "DEELEN", "Deelen LV": "DEELEN - LV",
     "Foods USA": "FOODS USA", "HHB": "HHB", "One time": "ONE TIME", "Eigen productie": "EIGEN PRODUCTIE",
-    "DIFS": "DIFS DIEPVRIES", "GPS-Miami": "GPS-MIAMI"
+    "DIFS": "DIFS DIEPVRIES", "GPS-Miami": "GPS-MIAMI",
+    "Van Beek ZV": "VAN BEEK ZV", "Van Beek LV": "VAN BEEK LV"
   },
   "department": {"vleeswaren_classes": ["0301", "0303"], "vleeswaren": "03. Vleeswaren", "other": "02. Slagerij vers"},
   "classes": {"kip": "0201: Kip", "rund": "0202: Rund", "varken": "0203: Varkensvlees", "vis": "0204: Vis (Vers)", "vega": "0205: Vega/vleesvervangers", "vleeswaren": "0301: Vleeswaren vers gesneden"},
-  "ignore": ["vendor ONE TIME bij controles", "retail afdelingen 13. Basismand en 14. Hardlopers", "salades, fruit, DIFS (geen vlees)", "kaas (apart proces, werkt al)", "pates (tijdelijk)"],
+  "ignore": ["vendor ONE TIME bij controles", "retail afdelingen 13. Basismand en 14. Hardlopers", "salades, fruit, DIFS (geen vlees)", "pates (tijdelijk)"],
   "taxable": false,
   "re_export_encoding": "cp1252",
   "main_location": "Main",
 
-  "vlees_klassen": ["0201", "0202", "0203", "0204", "0205", "0301", "0303", "0603"],
+  "soorten": {
+    "vlees": {"klassen": ["0201", "0202", "0203", "0204", "0205", "0301", "0303", "0603"], "bulk_afdeling_bevat_kaas": false, "naam_koppeling": true},
+    "kaas":  {"klassen": ["0302"], "bulk_afdeling_bevat_kaas": true, "naam_koppeling": true}
+  },
   "bulk_sku_prefix": "2024700",
   "test_plus": [9999, 999999],
   "kaas_leveranciers_weegschaal": ["Van Beek ZV", "Van Beek LV"],
   "afslag_indeling": {
     "kaas_plu_bereik": [1000, 1999],
     "kaas_subgroepen": ["Kaas"],
-    "kaas_meenemen": false,
+    "kaas_meenemen": true,
     "buiten_scope_subgroepen": ["Fruit", "Overig"],
     "buiten_scope_leveranciers": ["DIFS"],
     "totaal_tolerantie": 0.01,
@@ -48,7 +52,8 @@
   },
   "weegschaal_correcties": {
     "3508": {"bestelnummer": "310006", "reden": "Weegschaal zegt 310007; RE, facturen en alle andere kip-PLU's zeggen 310006 (bevestigd 6-11-2026)"},
-    "3020": {"bestelnummer": "2114", "reden": "Katenspek: weegschaal zegt 3020, pakbon Van Kooten zegt 2114"}
+    "3020": {"bestelnummer": "2114", "reden": "Katenspek: weegschaal zegt 3020, pakbon Van Kooten zegt 2114"},
+    "3561": {"bestelnummer": "PER53284", "reden": "Foods USA nieuw nummer PER53284 (was KOCH2200), in RE aangepast 5-11-2026"}
   },
   "pics_tool_menu_tabblad": "PICS import"
 }

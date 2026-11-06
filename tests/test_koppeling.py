@@ -78,3 +78,22 @@ def test_weegschaal_correctie_en_afwijking(regels):
 ])
 def test_bulk_artikelnaam(desc, uit):
     assert bulk_artikelnaam(desc) == uit
+
+
+def test_kaas_koppelt_op_naam_bij_afwijkend_part_nr(regels):
+    re_df = re_export([
+        ["2024700100523", "Bulk Boerenkaas jong, p/kg", "VAN BEEK ZV", "20001704", "03. Kaas vers gesneden", "0302: Kaas vers gesneden"],
+        ["2024700100356", "Bulk Boerderijkaas tomaat/olijf, p/kg", "VAN BEEK ZV", "27555004", "03. Kaas vers gesneden", "0302: Kaas"],
+        ["201704", "Stuk Boerenkaas jong, p/kg", "VAN BEEK ZV", "10001002", "03. Kaas vers gesneden", "0302: Kaas vers gesneden"],
+        ["201004", "Stuk Boerderijkaas tomaat/olijf, p/kg", "VAN BEEK ZV", "27555004", "03. Kaas vers gesneden", "0302: Kaas"],
+        ["203001", "Biefstuk", "VAN KOOTEN", "", "02. Slagerij vers", "0202: Rund"],
+    ])
+    w = weegschaal([[1704, "Boerenkaas jong", "Van Beek ZV", "10001002"], [1004, "Tomaat/olijf", "Van Beek ZV", ""],
+                    [3001, "Biefstuk", "Van Kooten", ""], [608000, "Kaas plakken", "Van Beek LV", ""]])
+    k = koppel(w, re_df, regels, "kaas")
+    assert dict(zip(k.plus.PLU, k.plus.bulk_sku)) == {1704: "2024700100523", 1004: "2024700100356"}
+    assert dict(zip(k.plus.PLU, k.plus.koppeling)) == {1704: "naam", 1004: "exact"}
+    assert "gelijk maken" in k.plus.set_index("PLU").at[1704, "meldingen"]
+    assert list(k.niet_in_re.PLU) == [608000]
+    v = koppel(w, re_df, regels, "vlees")
+    assert list(v.plus.PLU) == [3001] and len(v.bulks) == 0
