@@ -47,6 +47,10 @@ def maak_mappingtabel(k: Koppelresultaat, regels: Regels) -> pd.DataFrame:
                 let = "Samengesteld artikel (eigen productie): meerdere bulkbronnen, buiten correctie. Controleer."
             elif r.PLU in regels.controleer_part_nr:
                 let = "Controleer part nr"
+            factor = regels.afslag_indeling.get("per_stuk", {}).get(str(r.PLU))
+            if factor not in (None, "stuk"):
+                let = (f"Per stuk verkocht, bulk in kg: het PICS-tool boekt het aantal stuks als kg af. "
+                       f"Moet aantal x {str(factor).replace('.', ',')} kg zijn: bulkregel met de hand corrigeren.")
             pn = r.bulk_part_nr
             rijen.append([
                 "1-op-1" if n == 1 else f"Splitser ({n}x)",

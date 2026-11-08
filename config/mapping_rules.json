@@ -38,7 +38,7 @@
   "_uitleg_klasse_afwijking": "PLU's waarvan de klasse bewust afwijkt van de bulk (geen melding). 3039: retail 0301 vleeswaren, bulk 270266 blijft 0203 omdat 3018 er ook op hangt (Sjors, 6-11-2026).",
   "klasse_afwijking_toegestaan": [3039],
   "samengestelde_artikelen": [3101, 3612, 3615, 3691],
-  "controleer_part_nr": [3020, 3025, 3050],
+  "controleer_part_nr": [],
   "open_redenen": {},
   "_uitleg_negeren": "PLU's die bewust buiten de koppeling en de PICS-correctie vallen (beslissing Sjors 6-11-2026).",
   "negeren_plus": {
