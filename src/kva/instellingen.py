@@ -87,7 +87,7 @@ def zoek_bestand(patroon: str) -> Path:
 
 
 def uitvoermap(instellingen: dict) -> Path:
-    p = Path(instellingen.get("uitvoer", {}).get("map", "uitvoer"))
+    p = Path(os.path.expandvars(instellingen.get("uitvoer", {}).get("map", "uitvoer")))
     if not p.is_absolute():
         p = PROJECTMAP / p
     p.mkdir(parents=True, exist_ok=True)

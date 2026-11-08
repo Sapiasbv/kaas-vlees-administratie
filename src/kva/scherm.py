@@ -86,7 +86,8 @@ def bronnen_zijbalk(inst):
     if LOGO.exists():
         st.logo(str(LOGO), size="large")
     st.sidebar.markdown("### Bronbestanden")
-    st.sidebar.caption("De app pakt steeds het nieuwste bestand uit de map `data`.")
+    st.sidebar.caption("De app pakt steeds het nieuwste bestand uit de mappen RE-export en Weegschaal-lijst "
+                       "op de gedeelde schijf (Slagerij en kaas administratie).")
     paden = {}
     try:
         for sleutel, naam in (("re_export", "RE-export"), ("weegschaal", "Weegschaal-lijst"), ("pics_tool", "PICS-tool (kaas)")):
@@ -246,7 +247,12 @@ def pagina_week():
         st.markdown(f"**Periode:** {periode.tekst}")
         for m in periode.meldingen:
             st.warning(m)
-        eerder = lees_log(uit).get(h)
+        log = lees_log(uit)
+        eerder = log.get(h)
+        if eerder is None and periode.van:
+            # zelfde week, ander bestand (opnieuw geëxporteerd of al via het PICS-tool gedaan)
+            sleutel = f"Artikelen_van_{periode.van:%Y%m%d}_tm_{periode.tm:%Y%m%d}"
+            eerder = next((r for r in log.values() if r["bestand"].startswith(sleutel)), None)
         if eerder and "opgeslagen" not in ss:
             st.error(f"Deze afslag is al verwerkt op {eerder['datum']} ({Path(eerder['uitvoer']).name}). "
                      "Opnieuw importeren in RetailEdge boekt de voorraad dubbel.")
@@ -405,7 +411,7 @@ def pagina_voorraad():
     st.markdown("## Voorraad & tellijsten")
     stand = datetime.fromtimestamp(paden["re_export"].stat().st_mtime)
     st.caption(f"Voorraad volgens de RE-export `{paden['re_export'].name}` van {stand:%d-%m-%Y %H:%M}. "
-               "Wil je de stand van nu? Zet eerst een verse export in de map data › re_export.")
+               "Wil je de stand van nu? Zet eerst een verse export in de map RE-export op de gedeelde schijf.")
     lijst = voorraad_lijst(re_df, list(koppelingen), regels)
 
     tab_b, tab_s, tab_t, tab_i = st.tabs(["Bulkvoorraad", "Stuksvoorraad", "Tellijst uitdraaien", "Telling inlezen"])

@@ -1,11 +1,14 @@
 # Instellingen voor de Kaas & Vlees administratie.
 # Paden zijn relatief aan de projectmap, of volledig (bijv. de gedeelde schijf).
+# %USERPROFILE% wordt vervangen door de gebruikersmap van wie de app start (werkt dus ook bij collega's
+# die de gedeelde schijf via OneDrive gesynchroniseerd hebben).
 # Een patroon met * kiest automatisch het nieuwste bestand (op wijzigingsdatum).
+# Terug naar de projectmap: zet de regels onder [bronnen] en [uitvoer] weer op data/... en "uitvoer".
 
 [bronnen]
-re_export   = "data/re_export/*.csv"
-weegschaal  = "data/weegschaal/*.xlsx"
-pics_tool   = "data/pics_tool/Genereer_PICS_import*.xlsm"
+re_export   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/RE-export/*.csv"
+weegschaal  = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/Weegschaal-lijst/*.xlsx"
+pics_tool   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/PICS_import_tool/Genereer_PICS_import*.xlsm"
 
 [uitvoer]
-map = "uitvoer"
+map = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/Uitvoer app"

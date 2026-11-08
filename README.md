@@ -58,6 +58,18 @@ In RetailEdge: PICS Import als "Generic CSV - Sku, Quan", daarna PICS Update met
 - `config/`: regels (`mapping_rules.json`) en paden (`instellingen.toml`).
 - `docs/HANDOVER.md`: volledige overdracht.
 - `legacy_scripts/`: scripts uit de eerste fase (referentie).
-- `data/`, `uitvoer/`: bedrijfsdata, niet in git.
+- `data/`, `uitvoer/`: bedrijfsdata, niet in git (oude werkmappen; sinds 8-11-2026 staat het werk op de gedeelde schijf).
 
-GitHub: `Sapiasbv/kaas-vlees-administratie` (privé, nog aan te maken).
+## Gedeelde schijf (sinds 8-11-2026)
+
+`%USERPROFILE%\OneDrive - SAPIAS\Share-BDG-General - Documents\Slagerij en kaas administratie`:
+
+- `RE-export\`: inventory export (locatie Main, afdelingen 02, 03, 04, 13, 14). De app pakt de nieuwste.
+- `Weegschaal-lijst\`: weegschaal item-overzicht (elke opmaak). De app pakt de nieuwste.
+- `Z-afslagen\`: de weekafslagen (kies je in stap 1).
+- `PICS_import_tool\`: het oude tool van Nick (alleen gelezen, voor de kaas-aanvulling).
+- `Uitvoer app\`: PICS-lijsten, `_verwerking.xlsx`, logboek `verwerkte_afslagen.csv`, `afslagen\` (archief), `tellijsten\`, `maandcontrole\`.
+
+Het logboek bevat ook de weken die nog via het PICS-tool zijn gedaan (t/m 26-10 t/m 1-11-2026), zodat de app waarschuwt bij dubbel verwerken. Paden staan in `config/instellingen.toml`.
+
+GitHub: `Sapiasbv/kaas-vlees-administratie` (privé).
