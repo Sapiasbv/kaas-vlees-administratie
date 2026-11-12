@@ -26,6 +26,7 @@ from kva.verwerking import (  # noqa: E402
 )
 from kva.maand import archiveer, controleer_dekking, lees_re_verkoop, periode_uit_naam, vergelijk  # noqa: E402
 from kva.voorraad import BULK, STUK, lees_tellijst, maak_tellijst, telverschillen, voorraad_lijst  # noqa: E402
+from kva import stuksbalans as sb  # noqa: E402
 
 st.set_page_config(page_title="Voorraadcorrectie kaas & vlees", page_icon="🥩", layout="wide")
 
@@ -48,6 +49,12 @@ st.markdown("""
 .kva-kaart .waarde {font-size: 1.3rem; font-weight: 700; color: #1D2B3A; margin: .15rem 0;}
 .kva-kaart .uitleg {color: #5B6B7C; font-size: .85rem;}
 .kva-ok {color: #1E7B45;} .kva-let {color: #C2571A;}
+.kva-welkom {font-size: 1.05rem; color: #1D2B3A; margin: -.25rem 0 1rem 0;}
+.kva-todo {border-left: 4px solid #1B6FB5; background: #F5F9FD; padding: .6rem 1rem; border-radius: .4rem; margin-bottom: .4rem;}
+.kva-todo.klaar {border-left-color: #1E7B45; color: #5B6B7C;}
+.kva-todo.let {border-left-color: #C2571A; background: #FDF5EE;}
+.kva-bron {font-size: .82rem; line-height: 1.35; margin: 0 0 .3rem 0;}
+.kva-bron span {color: #5B6B7C;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -85,28 +92,30 @@ def dagen_oud(p: Path) -> int:
 def bronnen_zijbalk(inst):
     if LOGO.exists():
         st.logo(str(LOGO), size="large")
-    st.sidebar.markdown("### Bronbestanden")
-    st.sidebar.caption("De app pakt steeds het nieuwste bestand uit de mappen RE-export en Weegschaal-lijst "
-                       "op de gedeelde schijf (Slagerij en kaas administratie).")
-    paden = {}
+    paden, regels_html, oud = {}, [], False
     try:
-        for sleutel, naam in (("re_export", "RE-export"), ("weegschaal", "Weegschaal-lijst"), ("pics_tool", "PICS-tool (kaas)")):
+        for sleutel, naam in (("re_export", "RE-export"), ("weegschaal", "Weegschaal"), ("pics_tool", "PICS-tool")):
             p = zoek_bestand(inst["bronnen"][sleutel])
             paden[sleutel] = p
             d = dagen_oud(p)
-            oud = sleutel == "re_export" and d > 7
-            st.sidebar.markdown(f"{'🟠' if oud else '🟢'} **{naam}**  \n<small>{p.name} · "
-                                f"{'vandaag' if d == 0 else f'{d} dagen oud'}</small>", unsafe_allow_html=True)
-            if oud:
-                st.sidebar.warning("De RE-export is ouder dan een week. Zet een verse export in de map.")
+            te_oud = sleutel == "re_export" and d > 7
+            oud |= te_oud
+            leeftijd = "vandaag" if d == 0 else "gisteren" if d == 1 else f"{d} dagen"
+            regels_html.append(f'<div class="kva-bron" title="{p.name}">{"🟠" if te_oud else "🟢"} '
+                               f'<b>{naam}</b> <span>· {leeftijd}</span></div>')
     except BronFout as e:
         st.sidebar.error(str(e))
         st.stop()
+    with st.sidebar.expander("Bronbestanden" + (" ⚠️" if oud else " ✓"), expanded=oud):
+        st.markdown("".join(regels_html), unsafe_allow_html=True)
+        if oud:
+            st.caption("De RE-export is ouder dan een week: zet een verse export in de map RE-export.")
+        st.caption("Steeds het nieuwste bestand uit de mappen op de gedeelde schijf. Muis op een naam = bestandsnaam.")
+        if st.button("↻ Opnieuw inlezen", use_container_width=True):
+            laad_bronnen.clear()
+            st.rerun()
     bron = laad_bronnen(*(x for k in ("re_export", "weegschaal", "pics_tool")
                           for x in (str(paden[k]), paden[k].stat().st_mtime)))
-    if st.sidebar.button("Bronnen opnieuw inlezen", use_container_width=True):
-        laad_bronnen.clear()
-        st.rerun()
     return bron, paden
 
 
@@ -147,27 +156,114 @@ def vorige_week(vandaag: date | None = None) -> tuple[date, date]:
     return maandag, maandag + timedelta(days=6)
 
 
+def stuksbalans_nu() -> sb.Balans:
+    """Stand van de porties volgens de huidige RE-export; bewaart hem in de historie (een keer per export)."""
+    regels, re_df, koppelingen, _, _ = CTX["bron"]
+    p, inst = CTX["paden"]["re_export"], CTX["inst"]
+    tijd = datetime.fromtimestamp(p.stat().st_mtime)
+    stand = sb.stuks_stand(voorraad_lijst(re_df, list(koppelingen), regels), re_df)
+    map_ = CTX["uit"] / "stuksbalans"
+    try:
+        sb.bewaar_stand(map_, p.name, tijd, stand)
+    except OSError:
+        pass
+    cfg = inst.get("stuksbalans", {})
+    drempel = {"kg": float(cfg.get("drempel_kg", 0.5)), "st": float(cfg.get("drempel_st", 2))}
+    return sb.beoordeel(stand, sb.lees_standen(map_), tijd, drempel)
+
+
+def todo(tekst: str, soort: str = ""):
+    st.markdown(f'<div class="kva-todo {soort}">{tekst}</div>', unsafe_allow_html=True)
+
+
 def voorblad(koppelingen, paden, uit: Path):
-    """Overzicht voordat er een bestand is gekozen: welke week, staat alles klaar, wat is al gedaan."""
+    """Startscherm: wat moet er gebeuren, staat alles klaar, en hoe staan de porties ervoor."""
     van, tm = vorige_week()
     verwacht = f"Artikelen_van_{van:%Y%m%d}_tm_{tm:%Y%m%d}"
     log = sorted(lees_log(uit).values(), key=lambda r: r["datum"], reverse=True)
     al_gedaan = next((r for r in log if r["bestand"].startswith(verwacht)), None)
-
-    c1, c2, c3 = st.columns(3)
-    if al_gedaan:
-        kaart(c1, "Deze week", "Al verwerkt ✓", f"{datum_kort(van)} t/m {datum_kort(tm)}, op {al_gedaan['datum']}")
-    else:
-        kaart(c1, "Te verwerken", f"{datum_kort(van)} – {datum_kort(tm)}", f"Bestand: <code>{verwacht}.XLS</code>")
-    for kol, k in zip((c2, c3), koppelingen):
-        ok = k.open == 0
-        kaart(kol, f"{k.soort.capitalize()}: koppeling", f"{k.gekoppeld} van {k.aantal}",
-              "Alle PLU's hebben een bulk." if ok else f"{k.open} PLU's zonder bulk: die worden niet afgeboekt.", ok)
     re_oud = dagen_oud(paden["re_export"])
+    balans = stuksbalans_nu()
+    gemeten = balans.gemeten
+    afwijk = gemeten[gemeten.Status != sb.OK]
+    nonstock = balans.aantal(sb.NONSTOCK)
+    slechter = int((balans.tabel.Trend == sb.SLECHTER).sum())
+
+    st.markdown(f'<div class="kva-welkom">Te verwerken: week <b>{datum_kort(van)} t/m {datum_kort(tm)}</b> · '
+                f'vandaag is het {datum_kort(date.today())}</div>', unsafe_allow_html=True)
+
     if re_oud > 7:
-        st.warning(f"De RE-export is {re_oud} dagen oud. Zet eerst een verse export in `data\\re_export`.")
+        todo(f"⚠️ <b>Zet een verse RE-export in de map RE-export.</b> De huidige is {re_oud} dagen oud.", "let")
+    if al_gedaan:
+        todo(f"✅ De Z-afslag van deze week is verwerkt op {al_gedaan['datum']}.", "klaar")
+    else:
+        todo(f"👉 <b>Verwerk de Z-afslag van deze week.</b> Kies hieronder <code>{verwacht}.XLS</code>.")
+    open_k = [k for k in koppelingen if k.open]
+    if open_k:
+        todo("⚠️ " + " · ".join(f"{k.soort.capitalize()}: {k.open} PLU's zonder bulk" for k in open_k)
+             + ". Die worden niet van een bulk afgeboekt.", "let")
+    if nonstock:
+        todo(f"⚠️ <b>{nonstock} porties staan in RE op NonStock.</b> Zet ze op Stock, anders houdt RE geen voorraad bij.", "let")
+    if not afwijk.empty:
+        todo(f"⚠️ <b>{len(afwijk)} porties staan niet rond 0</b> ({balans.aantal(sb.MIN)} in de min, "
+             f"{balans.aantal(sb.PLUS)} in de plus). Zie <i>Stuksbalans</i> hieronder.", "let")
+    elif not gemeten.empty:
+        todo("✅ Alle porties staan rond 0.", "klaar")
+
+    c1, c2, c3, c4 = st.columns(4)
+    for kol, k in zip((c1, c2), koppelingen):
+        kaart(kol, f"{k.soort.capitalize()}: koppeling", f"{k.gekoppeld} van {k.aantal}",
+              "Alle PLU's hebben een bulk." if k.open == 0 else f"{k.open} PLU's zonder bulk.", k.open == 0)
+    kaart(c3, "Porties rond 0", f"{len(gemeten) - len(afwijk)} van {len(gemeten)}",
+          f"{balans.aantal(sb.MIN)} min · {balans.aantal(sb.PLUS)} plus"
+          + (f" · {nonstock} NonStock niet meegeteld" if nonstock else ""), afwijk.empty)
+    if balans.vorige:
+        kaart(c4, "Sinds vorige meting", f"{balans.rechtgetrokken} rechtgetrokken",
+              f"{slechter} slechter · vorige stand {balans.vorige:%d-%m %H:%M}", slechter == 0)
+    else:
+        kaart(c4, "Sinds vorige meting", "Eerste meting", "Bij de volgende RE-export zie je wat is rechtgetrokken.")
     st.write("")
-    return log
+    return log, balans
+
+
+def toon_stuksbalans(balans: sb.Balans, kort: bool):
+    """De porties die niet rond 0 staan, met de trend tegen de vorige meting."""
+    t = balans.tabel
+    if not CTX["inst"].get("stuksbalans", {}).get("nulmeting"):
+        st.warning("**Nog geen nulmeting van de porties.** De stand in RE komt nog uit de tijd dat de porties niet "
+                   "werden gecorrigeerd (veel NonStock en grote minnen). Tel de porties, zet ze in RE op de telling "
+                   "en geef de datum door; die komt in `config/instellingen.toml` bij `nulmeting`. Tot dan zegt vooral "
+                   "de kolom **Verandering** (sinds de vorige meting) iets.")
+    with st.popover("Wat betekent dit?"):
+        st.markdown("""
+Na een Z-afslag-correctie hoort een portie **rond 0** te staan: de productie van de week komt erbij (PICS-lijst),
+de verkoop gaat eraf (kassa).
+
+- **Plus**: meer geproduceerd dan verkocht. Ligt nog in de toonbank, is weggegooid, of verkocht onder een ander nummer.
+- **Min**: meer verkocht dan geproduceerd. Handmatig gewogen aan de kassa, verkeerde PLU, of de afslag mist iets.
+- **Trend**: vergeleken met de vorige RE-export. *Rechtgetrokken* = de week erna weer rond 0.
+
+Maak de RE-export het liefst direct na het importeren van de PICS-lijst, voordat de winkel opengaat.
+Anders zit de verkoop van de nieuwe week er al in, maar de productie nog niet.
+""")
+    c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+    keuze = c1.multiselect("Toon", [sb.MIN, sb.PLUS, sb.NONSTOCK, sb.OK], [sb.MIN, sb.PLUS], key=f"sb_keuze_{kort}")
+    soort = c2.multiselect("Soort", ["Vlees", "Kaas"], ["Vlees", "Kaas"], key=f"sb_soort_{kort}")
+    zicht = t[t.Status.isin(keuze) & t.Soort.isin(soort)]
+    kolommen = ["Soort", "PLU", "Omschrijving", "Eenheid", "Voorraad", "Vorige stand", "Verandering", "Trend",
+                "Status", "Waarde", "SKU", "Stocktype"]
+    st.dataframe(zicht[kolommen].head(15) if kort else zicht[kolommen], hide_index=True, use_container_width=True,
+                 height="auto" if kort else 520,
+                 column_config={"PLU": st.column_config.NumberColumn(format="%d"),
+                                "Voorraad": st.column_config.NumberColumn(format="%.3f"),
+                                "Vorige stand": st.column_config.NumberColumn(format="%.3f"),
+                                "Verandering": st.column_config.NumberColumn(format="%+.3f"),
+                                "Waarde": st.column_config.NumberColumn("Waarde $", format="%.2f")})
+    st.caption(f"Stand volgens de RE-export van {balans.stand:%d-%m-%Y %H:%M}."
+               + (f" De 15 grootste van {len(zicht)}; alles staat bij *Voorraad & tellijsten* › Stuksbalans."
+                  if kort and len(zicht) > 15 else ""))
+    st.download_button("Download stuksbalans (Excel)", excel_bytes({"Stuksbalans": t}),
+                       file_name=f"Stuksbalans_{balans.stand:%Y_%m_%d}.xlsx", key=f"sb_dl_{kort}")
 
 
 def laatst_verwerkt(log: list[dict]):
@@ -204,7 +300,7 @@ def pagina_week():
 
     # ---------------- stap 1
     if ss.get("upload") is None:
-        log = voorblad((k, k_kaas), paden, uit)
+        log, balans = voorblad((k, k_kaas), paden, uit)
     stap1 = st.container(border=True)
     with stap1:
         kop(1, "Kies de Z-afslag van afgelopen week (maandag t/m zondag)", ss.get("upload") is not None)
@@ -216,6 +312,9 @@ def pagina_week():
                 ss.pop(s, None)
             st.caption("Te vinden op de gedeelde schijf, map *Slagerij en kaas administratie* › Z-afslagen.")
     if bestand is None:
+        n = int((balans.gemeten.Status != sb.OK).sum())
+        with st.expander(f"Stuksbalans: {n} porties niet rond 0" if n else "Stuksbalans: alles rond 0"):
+            toon_stuksbalans(balans, kort=True)
         laatst_verwerkt(log)
         uitleg()
         st.stop()
@@ -414,7 +513,10 @@ def pagina_voorraad():
                "Wil je de stand van nu? Zet eerst een verse export in de map RE-export op de gedeelde schijf.")
     lijst = voorraad_lijst(re_df, list(koppelingen), regels)
 
-    tab_b, tab_s, tab_t, tab_i = st.tabs(["Bulkvoorraad", "Stuksvoorraad", "Tellijst uitdraaien", "Telling inlezen"])
+    tab_b, tab_s, tab_sb, tab_t, tab_i = st.tabs(["Bulkvoorraad", "Stuksvoorraad", "Stuksbalans",
+                                                  "Tellijst uitdraaien", "Telling inlezen"])
+    with tab_sb:
+        toon_stuksbalans(stuksbalans_nu(), kort=False)
     for tab, type_ in ((tab_b, BULK), (tab_s, STUK)):
         with tab:
             deel = lijst[lijst.Type == type_]

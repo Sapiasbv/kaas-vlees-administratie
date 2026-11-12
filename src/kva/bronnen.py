@@ -75,9 +75,13 @@ def sku_tekst(v) -> str:
 # ---------------------------------------------------------------- RetailEdge
 
 def lees_re_export(pad: Path, regels: Regels) -> pd.DataFrame:
-    """RE inventory-export (cp1252). Geeft alleen de hoofdlocatie, index = Inv_Sku."""
+    """RE inventory-export (CSV in cp1252, of als Excel opgeslagen). Geeft alleen de hoofdlocatie, index = Inv_Sku."""
     try:
-        df = pd.read_csv(pad, dtype=str, encoding=regels.re_encoding, low_memory=False, keep_default_na=False)
+        if pad.suffix.lower() in (".xlsx", ".xls"):
+            df = pd.read_excel(pad, dtype=str, keep_default_na=False)
+            df["Inv_Sku"] = df.Inv_Sku.str.replace(r"\.0$", "", regex=True)
+        else:
+            df = pd.read_csv(pad, dtype=str, encoding=regels.re_encoding, low_memory=False, keep_default_na=False)
     except UnicodeDecodeError as e:
         raise BronFout(f"RE-export is niet in {regels.re_encoding} opgeslagen: {pad.name} ({e})") from e
     ontbreekt = [k for k in RE_VERPLICHT if k not in df.columns]
@@ -87,7 +91,10 @@ def lees_re_export(pad: Path, regels: Regels) -> pd.DataFrame:
     df = df[df.Loc_Settings_LocID == regels.hoofdlocatie]
     if df.empty:
         raise BronFout(f"RE-export {pad.name} bevat geen regels voor locatie '{regels.hoofdlocatie}'.")
-    dubbel = df.Inv_Sku[df.Inv_Sku.duplicated()].unique()
+    # dubbele SKU's buiten vlees/kaas (bijv. in een volledige export) niet blokkeren: eerste houden
+    dubbel_alle = df.Inv_Sku[df.Inv_Sku.duplicated()]
+    dubbel = dubbel_alle[dubbel_alle.str.startswith("20")].unique()
+    df = df[~df.Inv_Sku.duplicated()]
     if len(dubbel):
         raise BronFout(f"RE-export {pad.name} bevat dubbele SKU's: {', '.join(dubbel[:10])}")
     return df.set_index("Inv_Sku", drop=False)

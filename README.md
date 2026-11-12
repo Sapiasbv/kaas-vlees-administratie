@@ -21,7 +21,9 @@ Dubbelklik `start_scherm.cmd`. De browser opent op http://localhost:8501 (alleen
 3. **PICS-lijst maken**: controle tegen RE, met een overzicht per bulk (wat eraf gaat, op welke porties het erbij komt, en of dat sluit). Daarna opslaan in `uitvoer/` (plus een Excel met de regels en het overzicht per bulk) en downloaden.
 4. **Importeren in RetailEdge** volgens de SOP (Append, nooit Overwrite).
 
-Pagina **Voorraad & tellijsten**: bulk- en stuksvoorraad volgens de RE-export (bekijken en als Excel downloaden), tellijsten uitdraaien (`uitvoer/tellijsten/`, vast formaat: tabblad Info, Tellijst bulk/stuks, verborgen tabblad Systeem met de voorraad bij uitdraaien) en een ingevulde tellijst weer inlezen voor de telverschillen.
+Voorblad: wat er deze week moet gebeuren (verse RE-export, Z-afslag, NonStock-porties) en de **stuksbalans**: na een correctie hoort elke portie rond 0 te staan (productie erbij, verkoop eraf). De app waarschuwt bij porties in de plus of min (drempel en datum van de nulmeting in `config/instellingen.toml`, `[stuksbalans]`). Elke RE-export wordt per portie bewaard in `Uitvoer app\stuksbalans\standen.csv`; zo is te zien of een afwijking de week erna is rechtgetrokken.
+
+Pagina **Voorraad & tellijsten**: bulk- en stuksvoorraad, stuksbalans volgens de RE-export (bekijken en als Excel downloaden), tellijsten uitdraaien (`uitvoer/tellijsten/`, vast formaat: tabblad Info, Tellijst bulk/stuks, verborgen tabblad Systeem met de voorraad bij uitdraaien) en een ingevulde tellijst weer inlezen voor de telverschillen.
 
 Pagina **Maandcontrole**: productie weegschaal (Z-afslagen) tegen verkoop RetailEdge, per PLU, over dezelfde periode. RE-rapport: Reports > *Sales by Items - Grouped by Location*, presets *Summary Report* en *Department only*, opslaan als *Excel File - Data (\*.xls)*. Geen kopregel: A SKU, B item, C aantal/kg, D kost, E omzet, F marge, G korting, H marge %, I aandeel. "lb" in kolom B is alleen een label; de hoeveelheid is kg.
 

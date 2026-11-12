@@ -2,6 +2,7 @@
 
   mapping                 koppelcontrole + mappingtabel Vlees (Excel in de uitvoermap)
   pics BESTAND [...]      PICS-import-CSV maken uit een of meer Z-afslagen
+  kostprijs               RE-import: kostprijs porties gelijk aan hun bulk
 """
 
 from __future__ import annotations
@@ -90,6 +91,49 @@ def opdracht_pics(args, inst, regels) -> int:
     return 1 if fouten else 0
 
 
+def opdracht_kostprijs(args, inst, regels) -> int:
+    from .kostprijs import AANPASSEN, portie_kostprijzen, wijzigingen
+    from .re_import import schrijf, template_koppen
+
+    re_pad = zoek_bestand(args.re_export or inst["bronnen"]["re_export"])
+    w_pad = zoek_bestand(inst["bronnen"]["weegschaal"])
+    template = zoek_bestand(inst["bronnen"].get("re_template", "data/templates/RetailEdge_CSV_Inventory_Import_Template*.xlsx"))
+    re_df = lees_re_export(re_pad, regels)
+    weeg = lees_weegschaal(w_pad)
+    ks = [koppel(weeg, re_df, regels, s) for s in ("vlees", "kaas")]
+    tabel = portie_kostprijzen(re_df, ks, regels)
+    w = wijzigingen(tabel)
+    print(f"RE-export: {re_pad.name} | weegschaal: {w_pad.name}")
+    for k in ks:
+        t = tabel[tabel.Soort == k.soort]
+        print(f"{k.soort.capitalize()}: {k.gekoppeld} gekoppelde porties | gelijk {int(t.Status.str.startswith('OK').sum())} | "
+              f"aanpassen {int(t.Status.str.startswith(AANPASSEN).sum())} | "
+              f"niet aangepast {int((~t.Status.str.startswith(('OK', AANPASSEN))).sum())}")
+    for r in tabel[~tabel.Status.str.startswith(("OK", AANPASSEN))].itertuples(index=False):
+        print(f"  {r.PLU} {r.Omschrijving}: {r.Status}")
+    if not w:
+        print("Niets aan te passen.")
+        return 0
+    uit = vrije_naam(uitvoermap(inst) / "kostprijs" / f"RE_import_kostprijs_porties_{datetime.now():%Y_%m_%d}.xlsx")
+    toel = ["Kostprijs porties = kostprijs bulk",
+            f"Bron: {re_pad.name} (locatie Main), {w_pad.name}. Template: {template.name}.",
+            "Waste zit één keer in de bulk (besteltool). Portie = bulk; stuksartikel = bulk x kg per stuk.",
+            "Alleen Inv_Cost_Last verandert (geel); alle andere kolommen komen uit de huidige RE-export.",
+            "Importeren: het CSV-bestand '_bijwerken.csv' in RetailEdge (Inventory Import, bijwerken).",
+            f"Aantal: {len(w)} porties. Tabblad 'Alle porties' toont ook wat gelijk is of is overgeslagen."]
+    xlsx, csv_pad = schrijf(uit, template_koppen(template), re_df, w, [], toel)
+    from openpyxl import load_workbook
+    wb = load_workbook(xlsx)
+    ws = wb.create_sheet("Alle porties")
+    ws.append(list(tabel.columns))
+    for r in tabel.itertuples(index=False):
+        ws.append(list(r))
+    wb.save(xlsx)
+    print(f"-> {xlsx}")
+    print(f"-> {csv_pad}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="kva", description="Kaas & Vlees administratie")
     ap.add_argument("--versie", action="version", version=f"kva {__version__}")
@@ -105,11 +149,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--naast-bron", action="store_true", help="CSV naast de Z-afslag zetten in plaats van in de uitvoermap")
     p.add_argument("--opnieuw", action="store_true", help="ook verwerken als deze afslag al eerder verwerkt is")
 
+    kp = sub.add_parser("kostprijs", help="RE-import: kostprijs porties gelijk aan hun bulk")
+    kp.add_argument("--re-export", help="pad naar RE-export (standaard: nieuwste in config)")
+
     args = ap.parse_args(argv)
     try:
         inst, regels = laad_instellingen(), laad_regels()
         if args.opdracht == "mapping":
             return opdracht_mapping(args, inst, regels)
+        if args.opdracht == "kostprijs":
+            return opdracht_kostprijs(args, inst, regels)
         return opdracht_pics(args, inst, regels)
     except BronFout as e:
         print(f"FOUT: {e}", file=sys.stderr)

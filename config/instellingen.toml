@@ -6,9 +6,17 @@
 # Terug naar de projectmap: zet de regels onder [bronnen] en [uitvoer] weer op data/... en "uitvoer".
 
 [bronnen]
-re_export   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/RE-export/*.csv"
+re_export   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/RE-export/inventory*"   # .csv of .xlsx
 weegschaal  = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/Weegschaal-lijst/*.xlsx"
 pics_tool   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/PICS_import_tool/Genereer_PICS_import*.xlsm"
 
 [uitvoer]
 map = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/Uitvoer app"
+
+[stuksbalans]
+# Datum waarop de porties (stuks-items) in RE op de telling zijn gezet (nulmeting), bijv. "2026-11-16".
+# Leeg = nog niet gedaan: de stand van de porties is dan nog opgebouwd uit de tijd zonder correctie.
+nulmeting = ""
+# Vanaf welke afwijking een portie een waarschuwing krijgt.
+drempel_kg = 0.5
+drempel_st = 2
