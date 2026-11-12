@@ -6,7 +6,7 @@
 # Terug naar de projectmap: zet de regels onder [bronnen] en [uitvoer] weer op data/... en "uitvoer".
 
 [bronnen]
-re_export   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/RE-export/inventory*"   # .csv of .xlsx
+re_export   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/RE-export/*inventory*"   # .csv of .xlsx
 weegschaal  = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/Weegschaal-lijst/*.xlsx"
 pics_tool   = "%USERPROFILE%/OneDrive - SAPIAS/Share-BDG-General - Documents/Slagerij en kaas administratie/PICS_import_tool/Genereer_PICS_import*.xlsm"
 
